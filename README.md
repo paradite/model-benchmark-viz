@@ -1,5 +1,7 @@
 # Model Benchmark Result visualization
 
+A project by [16x Eval](https://eval.16x.engineer/) team to evaluate the ability of different models to generate visualizations of the results of model benchmark tests.
+
 ## Benchmark Data
 
 The data is stored in `top-models.json`.
