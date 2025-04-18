@@ -7,17 +7,6 @@
       "edit_format": "diff"
     }
   },
-  "Gemini 2.5 Pro": {
-    "aider_polyglot": {
-      "percent_correct": 72.9,
-      "cost": 6.32,
-      "correct_edit_format": 92.4,
-      "edit_format": "diff-fenced"
-    },
-    "kcores_llm_arena": {
-      "normalized_score": 370.6
-    }
-  },
   "o4-mini (high)": {
     "aider_polyglot": {
       "percent_correct": 72.0,
@@ -29,15 +18,12 @@
       "normalized_score": 318.8
     }
   },
-  "Claude 3.7 Sonnet (Thinking)": {
+  "GPT-4.1": {
     "aider_polyglot": {
-      "percent_correct": 64.9,
-      "cost": 36.83,
-      "correct_edit_format": 97.8,
+      "percent_correct": 52.4,
+      "cost": 9.86,
+      "correct_edit_format": 98.2,
       "edit_format": "diff"
-    },
-    "kcores_llm_arena": {
-      "normalized_score": 334.8
     }
   },
   "Claude 3.5 Sonnet": {
@@ -51,12 +37,26 @@
       "normalized_score": 330.8
     }
   },
-  "GPT-4.1": {
+  "Claude 3.7 Sonnet (Thinking)": {
     "aider_polyglot": {
-      "percent_correct": 52.4,
-      "cost": 9.86,
-      "correct_edit_format": 98.2,
+      "percent_correct": 64.9,
+      "cost": 36.83,
+      "correct_edit_format": 97.8,
       "edit_format": "diff"
+    },
+    "kcores_llm_arena": {
+      "normalized_score": 334.8
+    }
+  },
+  "Gemini 2.5 Pro": {
+    "aider_polyglot": {
+      "percent_correct": 72.9,
+      "cost": 6.32,
+      "correct_edit_format": 92.4,
+      "edit_format": "diff-fenced"
+    },
+    "kcores_llm_arena": {
+      "normalized_score": 370.6
     }
   },
   "DeepSeek R1": {
