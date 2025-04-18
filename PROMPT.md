@@ -12,4 +12,5 @@ The visualization must satisfy the following requirements:
 
 Technical Requirements:
 
-- You can use any external libraries you want. However, you need to include the library directly in the HTML file so that the page can be viewed offline.
+- The entire visualization must be contained in a single HTML file.
+- You can use any external libraries you want. However, you need to include the library from a CDN directly in the HTML file.
