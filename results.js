@@ -1,4 +1,4 @@
-{
+export const results = {
   "o3 (high)": {
     "aider_polyglot": {
       "percent_correct": 79.6,
@@ -92,4 +92,6 @@
       "normalized_score": 296.0
     }
   }
-}
+};
+
+export const models = Object.keys(results);
