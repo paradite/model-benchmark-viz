@@ -1,6 +1,52 @@
-# Model Benchmark Result visualization
+# Model Benchmark Viz
 
-A project by [16x Eval](https://eval.16x.engineer/) team to evaluate the ability of different models to generate visualizations of the results of model benchmark tests.
+A project by [16x Eval](https://eval.16x.engineer/) to evaluate different models on their ability to generate visualizations of model benchmarks for coding.
+
+## Results
+
+GPT-4.1 generated the best looking visualization:
+
+![GPT-4.1](output/gpt-4.1.png)
+
+Source code: [gpt-4.1.html](output/gpt-4.1.html)
+
+o3 generated the second best visualization:
+
+![o3](output/o3.png)
+
+Source code: [o3.html](output/o3.html)
+
+Claude 3.7 generated the third best visualization.
+
+It uses scatter plots to compare the results of the models which is a big plus. However it has some formatting issues so the output doesn't look as good as the other visualizations:
+
+![claude-3.7](output/claude-3.7.png)
+
+Source code: [claude-3.7.html](output/claude-3.7.html)
+
+I also ran Claude 3.7 again with the same prompt, but it produced a bar chart visualization:
+
+![claude-3.7-2](output/claude-3.7-2.png)
+
+Source code: [claude-3.7-2.html](output/claude-3.7-2.html)
+
+Gemini 2.5 Pro, despite being ranked as the top model, produced a visualization that is not as good as the other models, with no labels on the bar chart.
+
+![gemini-2.5-pro](output/gemini-2.5-pro.png)
+
+Source code: [gemini-2.5-pro.html](output/gemini-2.5-pro.html)
+
+Re-running the prompt again with Gemini 2.5 Pro did not produce a better visualization.
+
+DeepSeek V3 generated a similar visualization to Gemini 2.5 Pro.
+
+![deepseek-v3](output/deepseek-v3.png)
+
+Source code: [deepseek-v3.html](output/deepseek-v3.html)
+
+## Prompt
+
+The prompt used to generate the visualization is [PROMPT.md](PROMPT.md).
 
 ## Benchmark Data
 
