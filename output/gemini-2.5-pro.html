@@ -2,7 +2,11 @@
 <html>
 <head>
     <title>Model Benchmark Results</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Include Chart.js from CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <!-- Include results.js (assumed to be in the same directory) -->
     <script src="results.js"></script>
     <style>
         body {
@@ -13,261 +17,300 @@
             padding: 20px;
             background-color: #f4f4f4;
         }
-        h1 {
+        h1, h2 {
             color: #333;
-            margin-bottom: 30px;
+            text-align: center;
         }
-        .chart-container {
-            position: relative; /* Needed for Chart.js responsiveness */
+        #chart-container {
             width: 90%;
-            max-width: 800px; /* Limit max width */
-            height: 450px; /* Fixed height for consistency */
+            max-width: 1000px;
+            height: 500px; /* Adjust height as needed */
             background-color: #fff;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-bottom: 30px;
         }
-        canvas {
-            display: block; /* Prevent extra space below canvas */
-            width: 100% !important; /* Override Chart.js inline style */
-            height: 100% !important; /* Override Chart.js inline style */
-        }
-        .legend-container {
+        #top-models-container {
             display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-bottom: 20px;
-            padding: 10px;
+            justify-content: space-around;
+            width: 90%;
+            max-width: 1000px;
+            margin-top: 20px;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+        }
+        .top-list {
             background-color: #fff;
+            padding: 15px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            width: 90%;
-            max-width: 800px;
+            margin: 10px;
+            min-width: 250px; /* Ensure lists have some width */
         }
-        .legend-item {
+        .top-list h3 {
+            margin-top: 0;
+            color: #555;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        .top-list ol {
+            padding-left: 20px;
+            margin-bottom: 0;
+        }
+        .top-list li {
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
-            margin: 5px 10px;
+        }
+        .color-swatch {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 8px;
+            border: 1px solid #ccc;
+            flex-shrink: 0; /* Prevent swatch from shrinking */
+        }
+        .model-name {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .model-score {
+            color: #777;
             font-size: 0.9em;
         }
-        .legend-color-box {
-            width: 15px;
-            height: 15px;
-            margin-right: 5px;
-            border: 1px solid #ccc;
-            display: inline-block; /* Ensure box aligns correctly */
+
+        /* Add some space for the legend */
+        #chart-container canvas {
+            max-height: calc(100% - 40px); /* Adjust if legend position changes */
         }
-        /* Style for raw data display */
-        #raw-data-container {
-            margin-top: 40px;
-            width: 90%;
-            max-width: 800px;
-        }
-        #raw-data-container h2 {
-            color: #555;
-            font-size: 1.2em;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-        #raw-data {
-            background-color: #eee;
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 5px;
-            font-family: monospace;
-            white-space: pre-wrap; /* Wrap long lines */
-            word-wrap: break-word; /* Break long words */
-            max-height: 300px;
-            overflow-y: auto; /* Add scroll if content overflows */
-            font-size: 0.85em;
-        }
+
     </style>
 </head>
 <body>
-    <h1>Model Benchmark Results</h1>
+    <h1>Model Benchmark Comparison</h1>
 
-    <div id="legend" class="legend-container"></div>
-
-    <div class="chart-container">
-        <canvas id="aiderChart"></canvas>
+    <div id="chart-container">
+        <canvas id="benchmarkChart"></canvas>
     </div>
 
-    <div class="chart-container">
-        <canvas id="kcoresChart"></canvas>
+    <h2>Top 3 Models per Benchmark</h2>
+    <div id="top-models-container">
+        <!-- Top models will be populated here by JavaScript -->
     </div>
-
-    <!-- Raw Data Display -->
-    <div id="raw-data-container">
-        <h2>Raw Data (results.js)</h2>
-        <pre id="raw-data"></pre>
-    </div>
-
 
     <script>
         // --- Configuration ---
         const benchmarkConfig = {
-            'aider_polyglot': {
+            "aider_polyglot": {
                 friendlyName: "Aider polyglot coding leaderboard",
-                primaryMetric: 'percent_correct',
-                canvasId: 'aiderChart',
-                axisLabel: 'Percent Correct (%)'
+                primaryMetric: "percent_correct",
+                yAxisID: 'yPercent',
+                labelSuffix: '%'
             },
-            'kcores_llm_arena': {
+            "kcores_llm_arena": {
                 friendlyName: "KCORES LLM Arena",
-                primaryMetric: 'normalized_score',
-                canvasId: 'kcoresChart',
-                axisLabel: 'Normalized Score'
+                primaryMetric: "normalized_score",
+                yAxisID: 'yScore',
+                labelSuffix: '' // No suffix for normalized score
             }
         };
 
-        // --- Color Generation ---
-        // Simple HSL-based color generator for variety
-        function generateColor(index, total) {
-            const hue = (index * (360 / total)) % 360;
-            return `hsl(${hue}, 70%, 60%)`; // Adjust saturation and lightness as needed
-        }
+        const benchmarkOrder = ["aider_polyglot", "kcores_llm_arena"]; // Define the order of benchmarks on the chart
 
+        // --- Color Palette ---
+        // Using a predefined list of distinct colors
+        const colorPalette = [
+            '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+            '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
+            '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5',
+            '#c49c94', '#f7b6d2', '#c7c7c7', '#dbdb8d', '#9edae5'
+        ];
+
+        // Assign a consistent color to each model
         const modelColors = {};
         models.forEach((modelName, index) => {
-            modelColors[modelName] = generateColor(index, models.length);
+            modelColors[modelName] = colorPalette[index % colorPalette.length];
         });
 
-        // --- Create Legend ---
-        const legendContainer = document.getElementById('legend');
+        // --- Data Processing ---
+        const chartLabels = benchmarkOrder.map(key => benchmarkConfig[key].friendlyName);
+        const datasets = [];
+        const benchmarkDataForRanking = {}; // To store data for ranking { benchmarkKey: [{ model, score, color }] }
+
+        // Initialize ranking data structure
+        benchmarkOrder.forEach(key => {
+            benchmarkDataForRanking[key] = [];
+        });
+
         models.forEach(modelName => {
-            const legendItem = document.createElement('div');
-            legendItem.classList.add('legend-item');
+            const modelData = [];
+            benchmarkOrder.forEach(benchmarkKey => {
+                const benchmarkInfo = benchmarkConfig[benchmarkKey];
+                let score = null; // Use null for missing data points
 
-            const colorBox = document.createElement('span');
-            colorBox.classList.add('legend-color-box');
-            colorBox.style.backgroundColor = modelColors[modelName];
-
-            const modelLabel = document.createTextNode(` ${modelName}`);
-
-            legendItem.appendChild(colorBox);
-            legendItem.appendChild(modelLabel);
-            legendContainer.appendChild(legendItem);
-        });
-
-
-        // --- Chart Creation Logic ---
-        function createBenchmarkChart(benchmarkKey) {
-            const config = benchmarkConfig[benchmarkKey];
-            if (!config) {
-                console.error(`No configuration found for benchmark: ${benchmarkKey}`);
-                return;
-            }
-
-            // 1. Filter and prepare data for this benchmark
-            const benchmarkData = [];
-            models.forEach(modelName => {
                 if (results[modelName] && results[modelName][benchmarkKey]) {
-                    const score = results[modelName][benchmarkKey][config.primaryMetric];
-                    if (score !== undefined && score !== null) {
-                        benchmarkData.push({
+                    score = results[modelName][benchmarkKey][benchmarkInfo.primaryMetric];
+                    // Store data for ranking if score is valid
+                    if (score !== null && typeof score === 'number') {
+                         benchmarkDataForRanking[benchmarkKey].push({
                             model: modelName,
-                            score: score
+                            score: score,
+                            color: modelColors[modelName]
                         });
                     }
                 }
+                modelData.push(score);
             });
 
-            // 2. Sort data by score (descending)
-            benchmarkData.sort((a, b) => b.score - a.score);
+            datasets.push({
+                label: modelName,
+                data: modelData,
+                backgroundColor: modelColors[modelName],
+                borderColor: modelColors[modelName],
+                borderWidth: 1,
+                // Assign dataset to the correct Y axis based on the first benchmark it has data for
+                // (This assumes models won't mix axes within their data array, which is true here)
+                yAxisID: results[modelName]?.[benchmarkOrder[0]] ? benchmarkConfig[benchmarkOrder[0]].yAxisID :
+                         results[modelName]?.[benchmarkOrder[1]] ? benchmarkConfig[benchmarkOrder[1]].yAxisID :
+                         benchmarkConfig[benchmarkOrder[0]].yAxisID // Default if no data?
+            });
+        });
 
-            // 3. Prepare data for Chart.js
-            const labels = benchmarkData.map(item => item.model);
-            const data = benchmarkData.map(item => item.score);
-            const backgroundColors = benchmarkData.map(item => modelColors[item.model]);
-            const borderColors = benchmarkData.map(item => modelColors[item.model]); // Use same color for border initially
-            const borderWidths = benchmarkData.map((item, index) => index < 3 ? 3 : 1); // Thicker border for top 3
+        // --- Calculate Top 3 ---
+        const topModels = {};
+        benchmarkOrder.forEach(key => {
+            // Sort models for this benchmark by score descending
+            benchmarkDataForRanking[key].sort((a, b) => b.score - a.score);
+            // Get top 3
+            topModels[key] = benchmarkDataForRanking[key].slice(0, 3);
+        });
 
-            // Adjust border color slightly for top 3 for more emphasis
-            for (let i = 0; i < Math.min(3, borderColors.length); i++) {
-                 // Example: Make border darker for top 3
-                 // This requires parsing HSL and adjusting lightness, or using a fixed darker shade.
-                 // For simplicity, let's use a fixed distinct color for top 3 borders.
-                 borderColors[i] = '#333'; // Dark border for top 3
+        // --- Render Top 3 Lists ---
+        const topModelsContainer = document.getElementById('top-models-container');
+        topModelsContainer.innerHTML = ''; // Clear previous content
+
+        benchmarkOrder.forEach(key => {
+            const benchmarkInfo = benchmarkConfig[key];
+            const topList = topModels[key];
+
+            const listDiv = document.createElement('div');
+            listDiv.classList.add('top-list');
+
+            const title = document.createElement('h3');
+            title.textContent = benchmarkInfo.friendlyName;
+            listDiv.appendChild(title);
+
+            const ol = document.createElement('ol');
+            if (topList.length > 0) {
+                topList.forEach(item => {
+                    const li = document.createElement('li');
+
+                    const swatch = document.createElement('span');
+                    swatch.classList.add('color-swatch');
+                    swatch.style.backgroundColor = item.color;
+                    li.appendChild(swatch);
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.classList.add('model-name');
+                    nameSpan.textContent = item.model;
+                    li.appendChild(nameSpan);
+
+                    const scoreSpan = document.createElement('span');
+                    scoreSpan.classList.add('model-score');
+                    scoreSpan.textContent = `(${item.score.toFixed(1)}${benchmarkInfo.labelSuffix || ''})`; // Format score
+                    li.appendChild(scoreSpan);
+
+                    ol.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.textContent = 'No data available.';
+                ol.appendChild(li);
             }
+            listDiv.appendChild(ol);
+            topModelsContainer.appendChild(listDiv);
+        });
 
 
-            // 4. Create Chart
-            const ctx = document.getElementById(config.canvasId).getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: config.axisLabel, // This label appears in tooltips
-                        data: data,
-                        backgroundColor: backgroundColors,
-                        borderColor: borderColors,
-                        borderWidth: borderWidths
-                    }]
-                },
-                options: {
-                    indexAxis: 'y', // Horizontal bars - better for long model names
-                    responsive: true,
-                    maintainAspectRatio: false, // Allow chart to fill container height
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: config.axisLabel
-                            }
+        // --- Chart Rendering ---
+        const ctx = document.getElementById('benchmarkChart').getContext('2d');
+        const benchmarkChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: chartLabels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Benchmark'
+                        }
+                    },
+                    // Define two Y axes
+                    [benchmarkConfig.aider_polyglot.yAxisID]: { // e.g., yPercent
+                        type: 'linear',
+                        position: 'left',
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: `Score (${benchmarkConfig.aider_polyglot.labelSuffix})` // e.g., Score (%)
                         },
-                        y: {
-                            ticks: {
-                                autoSkip: false // Ensure all model names are shown
+                        grid: {
+                            drawOnChartArea: false // Only draw grid for the primary axis (optional)
+                        }
+                    },
+                    [benchmarkConfig.kcores_llm_arena.yAxisID]: { // e.g., yScore
+                        type: 'linear',
+                        position: 'right',
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: `Score (${benchmarkConfig.kcores_llm_arena.labelSuffix || 'Normalized'})` // e.g., Score (Normalized)
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top', // Or 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    // Determine the correct suffix based on the dataset's yAxisID
+                                    const datasetYAxisID = context.dataset.yAxisID;
+                                    let suffix = '';
+                                    for (const key in benchmarkConfig) {
+                                        if (benchmarkConfig[key].yAxisID === datasetYAxisID) {
+                                            suffix = benchmarkConfig[key].labelSuffix || '';
+                                            break;
+                                        }
+                                    }
+                                    label += context.parsed.y.toFixed(1) + suffix;
+                                }
+                                return label;
                             }
                         }
                     },
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: config.friendlyName,
-                            font: {
-                                size: 18
-                            },
-                            padding: {
-                                top: 10,
-                                bottom: 20
-                            }
-                        },
-                        legend: {
-                            display: false // Using custom HTML legend above
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.x !== null) {
-                                        // Format score to 1 decimal place if needed
-                                        label += context.parsed.x.toFixed(1);
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
+                    title: {
+                        display: false, // Using the main H1 tag instead
+                        text: 'Model Benchmark Performance Comparison'
                     }
-                }
-            });
-        }
-
-        // --- Initialize Charts ---
-        Object.keys(benchmarkConfig).forEach(benchmarkKey => {
-            createBenchmarkChart(benchmarkKey);
+                },
+                // Group bars by benchmark (indexAxis: 'x')
+                indexAxis: 'x',
+            }
         });
 
-        // --- Display Raw Data ---
-        const rawDataElm = document.getElementById("raw-data");
-        rawDataElm.textContent = JSON.stringify(results, null, 2); // Use textContent for preformatted text
-
     </script>
+
 </body>
 </html>
