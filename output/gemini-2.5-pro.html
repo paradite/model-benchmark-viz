@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Model Benchmark Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="results.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .chart-container {
+            position: relative; /* Needed for Chart.js responsiveness */
+            width: 90%;
+            max-width: 800px; /* Limit max width */
+            height: 450px; /* Fixed height for consistency */
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        canvas {
+            display: block; /* Prevent extra space below canvas */
+            width: 100% !important; /* Override Chart.js inline style */
+            height: 100% !important; /* Override Chart.js inline style */
+        }
+        .legend-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 800px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 10px;
+            font-size: 0.9em;
+        }
+        .legend-color-box {
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
+            border: 1px solid #ccc;
+            display: inline-block; /* Ensure box aligns correctly */
+        }
+        /* Style for raw data display */
+        #raw-data-container {
+            margin-top: 40px;
+            width: 90%;
+            max-width: 800px;
+        }
+        #raw-data-container h2 {
+            color: #555;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        #raw-data {
+            background-color: #eee;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap; /* Wrap long lines */
+            word-wrap: break-word; /* Break long words */
+            max-height: 300px;
+            overflow-y: auto; /* Add scroll if content overflows */
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Model Benchmark Results</h1>
+
+    <div id="legend" class="legend-container"></div>
+
+    <div class="chart-container">
+        <canvas id="aiderChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="kcoresChart"></canvas>
+    </div>
+
+    <!-- Raw Data Display -->
+    <div id="raw-data-container">
+        <h2>Raw Data (results.js)</h2>
+        <pre id="raw-data"></pre>
+    </div>
+
+
+    <script>
+        // --- Configuration ---
+        const benchmarkConfig = {
+            'aider_polyglot': {
+                friendlyName: "Aider polyglot coding leaderboard",
+                primaryMetric: 'percent_correct',
+                canvasId: 'aiderChart',
+                axisLabel: 'Percent Correct (%)'
+            },
+            'kcores_llm_arena': {
+                friendlyName: "KCORES LLM Arena",
+                primaryMetric: 'normalized_score',
+                canvasId: 'kcoresChart',
+                axisLabel: 'Normalized Score'
+            }
+        };
+
+        // --- Color Generation ---
+        // Simple HSL-based color generator for variety
+        function generateColor(index, total) {
+            const hue = (index * (360 / total)) % 360;
+            return `hsl(${hue}, 70%, 60%)`; // Adjust saturation and lightness as needed
+        }
+
+        const modelColors = {};
+        models.forEach((modelName, index) => {
+            modelColors[modelName] = generateColor(index, models.length);
+        });
+
+        // --- Create Legend ---
+        const legendContainer = document.getElementById('legend');
+        models.forEach(modelName => {
+            const legendItem = document.createElement('div');
+            legendItem.classList.add('legend-item');
+
+            const colorBox = document.createElement('span');
+            colorBox.classList.add('legend-color-box');
+            colorBox.style.backgroundColor = modelColors[modelName];
+
+            const modelLabel = document.createTextNode(` ${modelName}`);
+
+            legendItem.appendChild(colorBox);
+            legendItem.appendChild(modelLabel);
+            legendContainer.appendChild(legendItem);
+        });
+
+
+        // --- Chart Creation Logic ---
+        function createBenchmarkChart(benchmarkKey) {
+            const config = benchmarkConfig[benchmarkKey];
+            if (!config) {
+                console.error(`No configuration found for benchmark: ${benchmarkKey}`);
+                return;
+            }
+
+            // 1. Filter and prepare data for this benchmark
+            const benchmarkData = [];
+            models.forEach(modelName => {
+                if (results[modelName] && results[modelName][benchmarkKey]) {
+                    const score = results[modelName][benchmarkKey][config.primaryMetric];
+                    if (score !== undefined && score !== null) {
+                        benchmarkData.push({
+                            model: modelName,
+                            score: score
+                        });
+                    }
+                }
+            });
+
+            // 2. Sort data by score (descending)
+            benchmarkData.sort((a, b) => b.score - a.score);
+
+            // 3. Prepare data for Chart.js
+            const labels = benchmarkData.map(item => item.model);
+            const data = benchmarkData.map(item => item.score);
+            const backgroundColors = benchmarkData.map(item => modelColors[item.model]);
+            const borderColors = benchmarkData.map(item => modelColors[item.model]); // Use same color for border initially
+            const borderWidths = benchmarkData.map((item, index) => index < 3 ? 3 : 1); // Thicker border for top 3
+
+            // Adjust border color slightly for top 3 for more emphasis
+            for (let i = 0; i < Math.min(3, borderColors.length); i++) {
+                 // Example: Make border darker for top 3
+                 // This requires parsing HSL and adjusting lightness, or using a fixed darker shade.
+                 // For simplicity, let's use a fixed distinct color for top 3 borders.
+                 borderColors[i] = '#333'; // Dark border for top 3
+            }
+
+
+            // 4. Create Chart
+            const ctx = document.getElementById(config.canvasId).getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: config.axisLabel, // This label appears in tooltips
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: borderWidths
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // Horizontal bars - better for long model names
+                    responsive: true,
+                    maintainAspectRatio: false, // Allow chart to fill container height
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: config.axisLabel
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                autoSkip: false // Ensure all model names are shown
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: config.friendlyName,
+                            font: {
+                                size: 18
+                            },
+                            padding: {
+                                top: 10,
+                                bottom: 20
+                            }
+                        },
+                        legend: {
+                            display: false // Using custom HTML legend above
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.x !== null) {
+                                        // Format score to 1 decimal place if needed
+                                        label += context.parsed.x.toFixed(1);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Initialize Charts ---
+        Object.keys(benchmarkConfig).forEach(benchmarkKey => {
+            createBenchmarkChart(benchmarkKey);
+        });
+
+        // --- Display Raw Data ---
+        const rawDataElm = document.getElementById("raw-data");
+        rawDataElm.textContent = JSON.stringify(results, null, 2); // Use textContent for preformatted text
+
+    </script>
+</body>
+</html>
