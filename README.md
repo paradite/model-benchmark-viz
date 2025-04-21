@@ -52,6 +52,12 @@ DeepSeek V3 generated a similar visualization to Gemini 2.5 Pro.
 
 Source code: [deepseek-v3.html](output/deepseek-v3.html)
 
+## Evaluation Results
+
+Evaluations are carried out using [16x Eval](https://eval.16x.engineer/). Here is the screenshot:
+
+![16x Eval table](16x-eval-table.png)
+
 ## Prompt
 
 The prompt used to generate the visualization is [PROMPT.md](PROMPT.md).
