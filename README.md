@@ -4,7 +4,7 @@ A project by [16x Eval](https://eval.16x.engineer/) team to evaluate the ability
 
 ## Benchmark Data
 
-The data is stored in `top-models.json`.
+The data is stored in `results.js`.
 
 Benchmark Data Sources:
 

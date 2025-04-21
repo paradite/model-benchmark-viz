@@ -2,7 +2,8 @@ Create a visualization of the model benchmark results using HTML, CSS, and JavaS
 
 The visualization must satisfy the following requirements:
 
-- The visualization must use the data from `results.js` directly as a global variable.
+- The visualization must load data from `results.js` via a script tag from the same directory:
+  - `<script src="results.js"></script>`
 - The visualization must focus on the primary metric for each benchmark:
   - `percent_correct` for `aider_polyglot`
   - `normalized_score` for `kcores_llm_arena`
