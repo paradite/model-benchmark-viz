@@ -4,17 +4,23 @@ A project by [16x Eval](https://eval.16x.engineer/) to evaluate different models
 
 ## Results
 
+### 🥇 GPT-4.1
+
 GPT-4.1 generated the best looking visualization:
 
 ![GPT-4.1](output/gpt-4.1.png)
 
 Source code: [gpt-4.1.html](output/gpt-4.1.html)
 
+### 🥈 o3
+
 o3 generated the second best visualization:
 
 ![o3](output/o3.png)
 
 Source code: [o3.html](output/o3.html)
+
+### 🥉 Claude 3.7
 
 Claude 3.7 generated the third best visualization.
 
@@ -29,6 +35,8 @@ I also ran Claude 3.7 again with the same prompt, but it produced a bar chart vi
 ![claude-3.7-2](output/claude-3.7-2.png)
 
 Source code: [claude-3.7-2.html](output/claude-3.7-2.html)
+
+### 4th place: Gemini 2.5 Pro and DeepSeek V3
 
 Gemini 2.5 Pro, despite being ranked as the top model, produced a visualization that is not as good as the other models, with no labels on the bar chart.
 
