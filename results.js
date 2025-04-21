@@ -1,4 +1,5 @@
-export const results = {
+// global variable format for easy loading into the HTML file
+const results = {
   "o3 (high)": {
     "aider_polyglot": {
       "percent_correct": 79.6,
@@ -94,4 +95,4 @@ export const results = {
   }
 };
 
-export const models = Object.keys(results);
+const models = Object.keys(results);

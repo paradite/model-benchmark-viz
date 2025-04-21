@@ -2,8 +2,6 @@ Create a visualization of the model benchmark results using HTML, CSS, and JavaS
 
 The visualization must satisfy the following requirements:
 
-- The visualization must load data from `results.js` via a script tag from the same directory:
-  - `<script src="results.js"></script>`
 - The visualization must focus on the primary metric for each benchmark:
   - `percent_correct` for `aider_polyglot`
   - `normalized_score` for `kcores_llm_arena`
@@ -16,5 +14,13 @@ The visualization must satisfy the following requirements:
 
 Technical Requirements:
 
-- The entire visualization must be contained in a single HTML file.
+- The entire visualization logic must be self-contained in a single HTML file.
+- Data must be loaded from `results.js` via a script tag from the same directory.
+- Assume `results.js` is already in the same directory as the HTML file.
 - You can use any external libraries you want. However, you need to include the library from a CDN directly in the HTML file.
+
+Output format:
+
+- Just output the HTML code.
+- Assume the HTML file is named `index.html` and is in the same directory as `results.js`.
+- Refer to the sample HTML file as the starting point.
