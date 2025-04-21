@@ -2,7 +2,9 @@ Create a visualization of the data in `top-models.json` using HTML, CSS, and Jav
 
 The visualization must satisfy the following requirements:
 
-- The visualization must focus on the primary metric for each benchmark, which is `percent_correct` for `aider_polyglot` and `normalized_score` for `kcores_llm_arena`.
+- The visualization must focus on the primary metric for each benchmark:
+  - `percent_correct` for `aider_polyglot`
+  - `normalized_score` for `kcores_llm_arena`
 - The visualization must use friendly names for the benchmarks, which are:
   - `aider_polyglot` -> "Aider polyglot coding leaderboard"
   - `kcores_llm_arena` -> "KCORES LLM Arena"
