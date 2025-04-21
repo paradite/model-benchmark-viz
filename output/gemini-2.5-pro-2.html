@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Model Benchmark Results</title>
+    <meta charset="utf-8">
+    <!-- Include Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <!-- Load benchmark data -->
+    <script src="results.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        #chart-container {
+            width: 80%;
+            max-width: 1000px;
+            height: 500px; /* Adjust height as needed */
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        #legend-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 80%;
+            max-width: 1000px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.9em;
+        }
+        .legend-color-box {
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
+            border: 1px solid #ccc;
+            display: inline-block;
+        }
+        #top-performers-container {
+            display: flex;
+            justify-content: space-around;
+            width: 80%;
+            max-width: 1000px;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .benchmark-top {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex: 1;
+            min-width: 250px; /* Ensure readability on smaller flex layouts */
+        }
+        .benchmark-top h3 {
+            margin-top: 0;
+            color: #555;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            text-align: center;
+        }
+        .benchmark-top ol {
+            padding-left: 20px;
+            margin-bottom: 0;
+        }
+        .benchmark-top li {
+            margin-bottom: 5px;
+            font-size: 0.95em;
+        }
+        .benchmark-top .score {
+            font-weight: bold;
+            color: #007bff; /* Highlight score */
+            margin-left: 5px;
+        }
+         /* Add some space below the chart before the top performers */
+        #chart-container + #top-performers-container {
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Model Benchmark Comparison</h1>
+
+    <div id="legend-container">
+        <!-- Legend will be populated by JavaScript -->
+    </div>
+
+    <div id="chart-container">
+        <canvas id="benchmarkChart"></canvas>
+    </div>
+
+    <h2>Top 3 Performers per Benchmark</h2>
+    <div id="top-performers-container">
+        <!-- Top performers will be populated by JavaScript -->
+    </div>
+
+    <!-- Raw data display (optional, kept from original example) -->
+    <!--
+    <h2>Raw Data</h2>
+    <pre id="raw-data" style="background: #eee; padding: 10px; border: 1px solid #ccc; width: 80%; overflow-x: auto;"></pre>
+    -->
+
+    <script>
+        // --- Configuration ---
+        const benchmarkConfig = {
+            'aider_polyglot': {
+                friendlyName: "Aider polyglot coding leaderboard",
+                metric: 'percent_correct',
+                normalize: (score) => score // Already 0-100
+            },
+            'kcores_llm_arena': {
+                friendlyName: "KCORES LLM Arena",
+                metric: 'normalized_score',
+                normalize: (score) => (score / 400) * 100 // Normalize 0-400 to 0-100
+            }
+        };
+
+        const benchmarkOrder = Object.keys(benchmarkConfig); // Use defined order
+        const benchmarkLabels = benchmarkOrder.map(key => benchmarkConfig[key].friendlyName);
+
+        // --- Color Palette ---
+        // Using a predefined palette for better consistency and distinction
+        const colorPalette = [
+            '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+            '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
+            '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5',
+            '#c49c94', '#f7b6d2', '#c7c7c7', '#dbdb8d', '#9edae5'
+        ];
+        let colorIndex = 0;
+        const modelColors = {};
+
+        // --- Data Processing ---
+        const chartDatasets = [];
+        const topPerformersData = {}; // { benchmarkKey: [{ model, score }, ...] }
+
+        // Initialize top performers data structure
+        benchmarkOrder.forEach(key => {
+            topPerformersData[key] = [];
+        });
+
+        // Get model names from the loaded results object
+        const modelNames = Object.keys(results);
+
+        modelNames.forEach(modelName => {
+            // Assign color
+            if (!modelColors[modelName]) {
+                modelColors[modelName] = colorPalette[colorIndex % colorPalette.length];
+                colorIndex++;
+            }
+
+            const modelData = [];
+            let hasData = false; // Track if model has data for any benchmark
+
+            benchmarkOrder.forEach(benchmarkKey => {
+                const benchmarkInfo = benchmarkConfig[benchmarkKey];
+                let normalizedScore = null;
+
+                if (results[modelName] && results[modelName][benchmarkKey]) {
+                    const rawScore = results[modelName][benchmarkKey][benchmarkInfo.metric];
+                    if (rawScore !== undefined && rawScore !== null) {
+                        normalizedScore = benchmarkInfo.normalize(rawScore);
+                        // Add to top performers list for this benchmark
+                        topPerformersData[benchmarkKey].push({
+                            model: modelName,
+                            score: normalizedScore
+                        });
+                        hasData = true;
+                    }
+                }
+                modelData.push(normalizedScore); // Use null for missing data
+            });
+
+            // Only add dataset if the model has data for at least one benchmark
+            if (hasData) {
+                 chartDatasets.push({
+                    label: modelName,
+                    data: modelData,
+                    backgroundColor: modelColors[modelName],
+                    borderColor: modelColors[modelName], // Optional: use slightly darker border
+                    borderWidth: 1
+                });
+            }
+        });
+
+        // Sort top performers for each benchmark
+        benchmarkOrder.forEach(benchmarkKey => {
+            topPerformersData[benchmarkKey].sort((a, b) => b.score - a.score); // Descending order
+        });
+
+        // --- Render Chart ---
+        const ctx = document.getElementById('benchmarkChart').getContext('2d');
+        const benchmarkChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: benchmarkLabels,
+                datasets: chartDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Normalized Benchmark Scores (0-100)',
+                        font: { size: 16 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    // Display score rounded to 1 decimal place
+                                    label += context.parsed.y.toFixed(1);
+                                } else {
+                                    label += 'N/A';
+                                }
+                                return label;
+                            }
+                        }
+                    },
+                    legend: {
+                        display: false // Disable default legend, we use a custom one
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Normalized Score (0-100)'
+                        }
+                    },
+                    x: {
+                         title: {
+                            display: true,
+                            text: 'Benchmark'
+                        }
+                    }
+                },
+                // Grouped bar chart behavior
+                indexAxis: 'x', // Bars grouped along the x-axis (benchmarks)
+            }
+        });
+
+        // --- Render Custom Legend ---
+        const legendContainer = document.getElementById('legend-container');
+        chartDatasets.forEach(dataset => { // Iterate through datasets actually added to the chart
+            const modelName = dataset.label;
+            const color = dataset.backgroundColor;
+
+            const legendItem = document.createElement('div');
+            legendItem.classList.add('legend-item');
+
+            const colorBox = document.createElement('span');
+            colorBox.classList.add('legend-color-box');
+            colorBox.style.backgroundColor = color;
+
+            const text = document.createTextNode(modelName);
+
+            legendItem.appendChild(colorBox);
+            legendItem.appendChild(text);
+            legendContainer.appendChild(legendItem);
+        });
+
+         // --- Render Top Performers ---
+        const topPerformersContainer = document.getElementById('top-performers-container');
+        benchmarkOrder.forEach(benchmarkKey => {
+            const benchmarkInfo = benchmarkConfig[benchmarkKey];
+            const topModels = topPerformersData[benchmarkKey].slice(0, 3); // Get top 3
+
+            const benchmarkDiv = document.createElement('div');
+            benchmarkDiv.classList.add('benchmark-top');
+
+            const title = document.createElement('h3');
+            title.textContent = benchmarkInfo.friendlyName;
+            benchmarkDiv.appendChild(title);
+
+            if (topModels.length > 0) {
+                const list = document.createElement('ol');
+                topModels.forEach((item, index) => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `${item.model}`;
+
+                    const scoreSpan = document.createElement('span');
+                    scoreSpan.classList.add('score');
+                    scoreSpan.textContent = `(${item.score.toFixed(1)})`; // Show score rounded to 1 decimal
+                    listItem.appendChild(scoreSpan);
+
+                    // Highlight top 3 with medal emojis or similar (optional)
+                    // if (index === 0) listItem.prepend('🥇 ');
+                    // else if (index === 1) listItem.prepend('🥈 ');
+                    // else if (index === 2) listItem.prepend('🥉 ');
+
+                    list.appendChild(listItem);
+                });
+                benchmarkDiv.appendChild(list);
+            } else {
+                const noData = document.createElement('p');
+                noData.textContent = 'No data available for this benchmark.';
+                benchmarkDiv.appendChild(noData);
+            }
+
+            topPerformersContainer.appendChild(benchmarkDiv);
+        });
+
+
+        // --- Optional: Display Raw Data ---
+        /*
+        const rawDataElm = document.getElementById("raw-data");
+        if (rawDataElm) {
+            rawDataElm.textContent = JSON.stringify(results, null, 2);
+        }
+        */
+
+    </script>
+</body>
+</html>
