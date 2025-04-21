@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Model Benchmark Results</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Load results.js (must be in same directory) -->
+    <script src="results.js"></script>
+    <style>
+      body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+        background: #f8f9fa;
+        margin: 0;
+        padding: 0;
+      }
+      h1 {
+        text-align: center;
+        margin-top: 32px;
+        margin-bottom: 8px;
+      }
+      #chart-container {
+        max-width: 1100px;
+        margin: 32px auto 0 auto;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+        padding: 32px 32px 24px 32px;
+      }
+      #legend {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 24px;
+        margin-bottom: 8px;
+        gap: 16px;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        font-size: 15px;
+        margin-right: 12px;
+        margin-bottom: 6px;
+      }
+      .legend-color {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        margin-right: 7px;
+        border: 1.5px solid #bbb;
+        box-sizing: border-box;
+      }
+      .top-label {
+        font-weight: bold;
+        font-size: 13px;
+        background: #ffe066;
+        color: #7c5c00;
+        border-radius: 4px;
+        padding: 2px 6px;
+        margin-left: 6px;
+        vertical-align: middle;
+      }
+      @media (max-width: 700px) {
+        #chart-container {
+          padding: 10px 2px 10px 2px;
+        }
+        #legend {
+          font-size: 13px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <div id="chart-container">
+      <canvas id="benchmarkChart"></canvas>
+      <div id="legend"></div>
+    </div>
+    <script>
+      // --- Configuration ---
+      const BENCHMARKS = [
+        {
+          key: "aider_polyglot",
+          name: "Aider polyglot coding leaderboard",
+          metric: "percent_correct",
+          normalize: x => x // already 0-100
+        },
+        {
+          key: "kcores_llm_arena",
+          name: "KCORES LLM Arena",
+          metric: "normalized_score",
+          normalize: x => Math.round((x / 400) * 1000) / 10 // 0-400 -> 0-100, 1 decimal
+        }
+      ];
+
+      // --- Assign colors to models ---
+      // Use a color palette (ColorBrewer Set2 + a few extras)
+      const COLOR_PALETTE = [
+        "#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3",
+        "#a6d854", "#ffd92f", "#e5c494", "#b3b3b3",
+        "#1f78b4", "#33a02c", "#fb9a99", "#cab2d6"
+      ];
+      const modelNames = Object.keys(results);
+      const modelColors = {};
+      modelNames.forEach((name, i) => {
+        modelColors[name] = COLOR_PALETTE[i % COLOR_PALETTE.length];
+      });
+
+      // --- Prepare data for chart ---
+      // For each benchmark, collect {model, normalized score}
+      const chartData = {};
+      BENCHMARKS.forEach(bench => {
+        chartData[bench.key] = [];
+        modelNames.forEach(model => {
+          const modelBench = results[model][bench.key];
+          if (modelBench && typeof modelBench[bench.metric] === "number") {
+            chartData[bench.key].push({
+              model,
+              value: bench.normalize(modelBench[bench.metric])
+            });
+          }
+        });
+      });
+
+      // --- Find top 3 models per benchmark ---
+      const topModelsPerBenchmark = {};
+      BENCHMARKS.forEach(bench => {
+        // Sort descending by value
+        const sorted = [...chartData[bench.key]].sort((a, b) => b.value - a.value);
+        topModelsPerBenchmark[bench.key] = sorted.slice(0, 3).map(x => x.model);
+      });
+
+      // --- Prepare Chart.js datasets ---
+      // For each model, create a dataset with values for each benchmark (null if missing)
+      const datasets = modelNames.map(model => {
+        return {
+          label: model,
+          data: BENCHMARKS.map(bench => {
+            const found = chartData[bench.key].find(x => x.model === model);
+            return found ? found.value : null;
+          }),
+          backgroundColor: modelColors[model],
+          borderColor: "#333",
+          borderWidth: 1,
+          borderSkipped: false,
+          maxBarThickness: 38,
+          datalabels: {
+            display: function(context) {
+              // Show label if this model is top 3 for this benchmark
+              const benchIdx = context.dataIndex;
+              const benchKey = BENCHMARKS[benchIdx].key;
+              return topModelsPerBenchmark[benchKey].includes(model);
+            },
+            align: 'end',
+            anchor: 'end',
+            backgroundColor: '#ffe066',
+            borderRadius: 4,
+            color: '#7c5c00',
+            font: { weight: 'bold', size: 13 },
+            formatter: function(value, context) {
+              const benchIdx = context.dataIndex;
+              const benchKey = BENCHMARKS[benchIdx].key;
+              const rank = topModelsPerBenchmark[benchKey].indexOf(model);
+              if (rank === 0) return "🥇 1st";
+              if (rank === 1) return "🥈 2nd";
+              if (rank === 2) return "🥉 3rd";
+              return "";
+            },
+            padding: {top: 2, bottom: 2, left: 6, right: 6}
+          }
+        };
+      });
+
+      // --- Render Chart.js grouped bar chart ---
+      // Use chartjs-plugin-datalabels for top 3 labels
+      // CDN: https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <script>
+      // Chart.js config
+      const ctx = document.getElementById('benchmarkChart').getContext('2d');
+      const chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: BENCHMARKS.map(b => b.name),
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            title: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const value = context.parsed.y !== undefined ? context.parsed.y : context.parsed.x;
+                  return `${context.dataset.label}: ${value !== null ? value + " / 100" : "N/A"}`;
+                }
+              }
+            },
+            datalabels: {
+              // Per-dataset config above
+              clip: true
+            }
+          },
+          scales: {
+            x: {
+              stacked: false,
+              title: { display: false },
+              ticks: {
+                font: { size: 15 }
+              }
+            },
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {
+                display: true,
+                text: "Normalized Score (0-100)"
+              },
+              ticks: {
+                stepSize: 10,
+                font: { size: 14 }
+              },
+              grid: {
+                color: "#e0e0e0"
+              }
+            }
+          }
+        },
+        plugins: [ChartDataLabels]
+      });
+
+      // --- Render legend ---
+      const legendDiv = document.getElementById('legend');
+      modelNames.forEach(model => {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        const colorBox = document.createElement('span');
+        colorBox.className = 'legend-color';
+        colorBox.style.backgroundColor = modelColors[model];
+        item.appendChild(colorBox);
+        item.appendChild(document.createTextNode(model));
+        // Add "Top 3" badges for each benchmark if applicable
+        BENCHMARKS.forEach(bench => {
+          const rank = topModelsPerBenchmark[bench.key].indexOf(model);
+          if (rank >= 0) {
+            const badge = document.createElement('span');
+            badge.className = 'top-label';
+            badge.textContent = `${bench.name}: ${rank === 0 ? "🥇 1st" : rank === 1 ? "🥈 2nd" : "🥉 3rd"}`;
+            item.appendChild(badge);
+          }
+        });
+        legendDiv.appendChild(item);
+      });
+    </script>
+  </body>
+</html>

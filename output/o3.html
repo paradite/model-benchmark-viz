@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Model Benchmark Results</title>
+
+    <!-- results.js MUST be in the same folder as this file  -->
+    <script src="results.js"></script>
+
+    <!-- Chart.js & the data‑label plug‑in from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 2rem;
+        background: #fafafa;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+      #chart-wrapper {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      canvas {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 1rem;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Model Benchmark Comparison</h1>
+    <div id="chart-wrapper">
+      <canvas id="benchmarkChart"></canvas>
+    </div>
+
+    <script>
+      /******************************************************************
+       * 1.  ----  Friendly benchmark names & helpers  ----
+       ******************************************************************/
+      const BENCHMARKS = [
+        { key: "aider_polyglot", label: "Aider polyglot coding leaderboard" },
+        { key: "kcores_llm_arena", label: "KCORES LLM Arena" },
+      ];
+
+      // Utility to generate a distinct-ish colour per model
+      const colorForIndex = (i) => `hsl(${(i * 47) % 360}, 70%, 50%)`;
+
+      // Get the list of models from results.js
+      const modelNames = Object.keys(results);
+
+      /******************************************************************
+       * 2.  ----  Normalise & organise the data  ----
+       ******************************************************************/
+      const modelScores = {}; // modelScores[model][benchmarkKey] = 0‑100 (or null)
+
+      modelNames.forEach((model) => {
+        modelScores[model] = {};
+
+        BENCHMARKS.forEach(({ key }) => {
+          const benchData = results[model]?.[key];
+
+          if (!benchData) {
+            modelScores[model][key] = null; // missing
+            return;
+          }
+
+          if (key === "aider_polyglot") {
+            // already 0‑100
+            modelScores[model][key] = benchData.percent_correct;
+          } else if (key === "kcores_llm_arena") {
+            // normalise 0‑400  ->  0‑100
+            modelScores[model][key] =
+              (benchData.normalized_score / 400) * 100;
+          }
+        });
+      });
+
+      /******************************************************************
+       * 3.  ----  Determine the top‑3 models per benchmark  ----
+       ******************************************************************/
+      const top3ByBenchmark = {}; // top3ByBenchmark[key] = [model, model, model]
+      const rankLookup = {}; // rankLookup[key][model] = 1 | 2 | 3
+
+      BENCHMARKS.forEach(({ key }) => {
+        // Build list of {model, score} where score is not null
+        const list = modelNames
+          .map((m) => ({ model: m, score: modelScores[m][key] }))
+          .filter((obj) => obj.score != null)
+          .sort((a, b) => b.score - a.score);
+
+        top3ByBenchmark[key] = list.slice(0, 3).map((o) => o.model);
+        rankLookup[key] = {};
+        top3ByBenchmark[key].forEach((m, i) => (rankLookup[key][m] = i + 1));
+      });
+
+      /******************************************************************
+       * 4.  ----  Build the Chart.js datasets  ----
+       ******************************************************************/
+      const datasets = modelNames.map((model, idx) => ({
+        label: model,
+        data: BENCHMARKS.map(({ key }) => modelScores[model][key]),
+        backgroundColor: colorForIndex(idx),
+        borderRadius: 4,
+        barPercentage: 0.8,
+        categoryPercentage: 0.8,
+      }));
+
+      /******************************************************************
+       * 5.  ----  Create the chart  ----
+       ******************************************************************/
+      const ctx = document.getElementById("benchmarkChart");
+
+      new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: BENCHMARKS.map((b) => b.label),
+          datasets: datasets,
+        },
+        plugins: [ChartDataLabels],
+        options: {
+          responsive: true,
+          interaction: { mode: "nearest", intersect: false },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {
+                display: true,
+                text: "Normalised Score (0‑100)",
+                font: { weight: "bold" },
+              },
+            },
+            x: {
+              stacked: false,
+            },
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: "bottom",
+              labels: { boxWidth: 20 },
+            },
+            datalabels: {
+              anchor: "end",
+              align: "start",
+              offset: 4,
+              font: { weight: "bold" },
+              color: "#000",
+              formatter: (value, ctx) => {
+                // Hide label if no value
+                if (value == null) return "";
+
+                const benchIdx = ctx.dataIndex; // 0 or 1
+                const benchKey = BENCHMARKS[benchIdx].key;
+                const model = ctx.dataset.label;
+
+                const rank = rankLookup[benchKey]?.[model];
+                return rank && rank <= 3 ? `Top ${rank}` : "";
+              },
+            },
+            tooltip: {
+              callbacks: {
+                label: (tooltipItem) => {
+                  const v = tooltipItem.raw;
+                  return `${tooltipItem.dataset.label}: ${v?.toFixed(1) ?? "N/A"}`;
+                },
+              },
+            },
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

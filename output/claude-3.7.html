@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Model Benchmark Results</title>
+  <script src="results.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f7fa;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 30px;
+    }
+    
+    .chart-container {
+      position: relative;
+      height: 500px;
+      margin-bottom: 40px;
+    }
+    
+    .legend-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+      gap: 15px;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-right: 15px;
+      font-size: 14px;
+    }
+    
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      margin-right: 5px;
+      border-radius: 3px;
+    }
+    
+    .top-models {
+      margin-top: 30px;
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    
+    .benchmark-section {
+      margin-bottom: 20px;
+    }
+    
+    .benchmark-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #2c3e50;
+    }
+    
+    .top-model {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    
+    .rank {
+      font-weight: bold;
+      margin-right: 10px;
+      width: 25px;
+      height: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      color: white;
+    }
+    
+    .rank-1 {
+      background-color: #ffd700;
+    }
+    
+    .rank-2 {
+      background-color: #c0c0c0;
+    }
+    
+    .rank-3 {
+      background-color: #cd7f32;
+    }
+    
+    .model-color {
+      width: 15px;
+      height: 15px;
+      margin-right: 10px;
+      border-radius: 3px;
+    }
+    
+    .model-name {
+      margin-right: 10px;
+    }
+    
+    .model-score {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Model Benchmark Results</h1>
+    
+    <div class="chart-container">
+      <canvas id="benchmarkChart"></canvas>
+    </div>
+    
+    <div class="legend-container" id="legendContainer"></div>
+    
+    <div class="top-models">
+      <h2>Top Performing Models</h2>
+      <div id="topModelsContainer"></div>
+    </div>
+  </div>
+
+  <script>
+    // Define colors for each model
+    const modelColors = {
+      "o3 (high)": "#FF6384",
+      "o4-mini (high)": "#36A2EB",
+      "GPT-4.1": "#FFCE56",
+      "Claude 3.5 Sonnet": "#4BC0C0",
+      "Claude 3.7 Sonnet (Thinking)": "#9966FF",
+      "Gemini 2.5 Pro": "#FF9F40",
+      "DeepSeek R1": "#C9CBCF",
+      "DeepSeek V3 (0324)": "#7CFC00",
+      "Grok 3 Beta": "#8A2BE2"
+    };
+
+    // Friendly names for benchmarks
+    const benchmarkNames = {
+      "aider_polyglot": "Aider polyglot coding leaderboard",
+      "kcores_llm_arena": "KCORES LLM Arena"
+    };
+
+    // Process data
+    const processedData = {};
+    const benchmarks = [];
+
+    // Find all available benchmarks
+    for (const model in results) {
+      for (const benchmark in results[model]) {
+        if (!benchmarks.includes(benchmark)) {
+          benchmarks.push(benchmark);
+        }
+      }
+    }
+
+    // Process data for each benchmark
+    benchmarks.forEach(benchmark => {
+      processedData[benchmark] = {};
+      
+      for (const model in results) {
+        if (results[model][benchmark]) {
+          let score;
+          
+          if (benchmark === "aider_polyglot") {
+            score = results[model][benchmark].percent_correct;
+          } else if (benchmark === "kcores_llm_arena") {
+            // Normalize score from 0-400 to 0-100
+            score = (results[model][benchmark].normalized_score / 400) * 100;
+          }
+          
+          processedData[benchmark][model] = score;
+        }
+      }
+    });
+
+    // Get top 3 models for each benchmark
+    const topModels = {};
+    
+    benchmarks.forEach(benchmark => {
+      const scores = Object.entries(processedData[benchmark])
+        .map(([model, score]) => ({ model, score }))
+        .sort((a, b) => b.score - a.score);
+      
+      topModels[benchmark] = scores.slice(0, 3);
+    });
+
+    // Prepare data for Chart.js
+    const datasets = [];
+    
+    for (const model in results) {
+      const dataPoints = [];
+      
+      benchmarks.forEach(benchmark => {
+        if (processedData[benchmark][model] !== undefined) {
+          dataPoints.push({
+            x: benchmarkNames[benchmark],
+            y: processedData[benchmark][model]
+          });
+        } else {
+          dataPoints.push({
+            x: benchmarkNames[benchmark],
+            y: null
+          });
+        }
+      });
+      
+      datasets.push({
+        label: model,
+        data: dataPoints,
+        backgroundColor: modelColors[model],
+        borderColor: modelColors[model],
+        borderWidth: 2,
+        pointRadius: 6,
+        pointHoverRadius: 8
+      });
+    }
+
+    // Create chart
+    document.addEventListener('DOMContentLoaded', function() {
+      Chart.register(ChartDataLabels);
+      
+      const ctx = document.getElementById('benchmarkChart').getContext('2d');
+      
+      const chart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              type: 'category',
+              position: 'bottom',
+              title: {
+                display: true,
+                text: 'Benchmark',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                }
+              }
+            },
+            y: {
+              min: 0,
+              max: 100,
+              title: {
+                display: true,
+                text: 'Normalized Score (0-100)',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                }
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const model = context.dataset.label;
+                  const score = context.parsed.y.toFixed(1);
+                  return `${model}: ${score}`;
+                }
+              }
+            },
+            datalabels: {
+              display: function(context) {
+                // Only show labels for top 3 models in each benchmark
+                const benchmark = context.chart.data.datasets[context.datasetIndex].data[context.dataIndex].x;
+                const model = context.chart.data.datasets[context.datasetIndex].label;
+                const benchmarkKey = Object.keys(benchmarkNames).find(key => benchmarkNames[key] === benchmark);
+                
+                if (!benchmarkKey) return false;
+                
+                const isTop3 = topModels[benchmarkKey].some(item => item.model === model);
+                return isTop3;
+              },
+              formatter: function(value, context) {
+                return context.dataset.label;
+              },
+              color: 'white',
+              backgroundColor: function(context) {
+                return context.dataset.backgroundColor;
+              },
+              borderRadius: 3,
+              padding: 5,
+              font: {
+                weight: 'bold',
+                size: 10
+              },
+              align: 'top',
+              offset: 10
+            }
+          }
+        }
+      });
+      
+      // Create custom legend
+      const legendContainer = document.getElementById('legendContainer');
+      
+      for (const model in modelColors) {
+        const legendItem = document.createElement('div');
+        legendItem.className = 'legend-item';
+        
+        const colorBox = document.createElement('div');
+        colorBox.className = 'legend-color';
+        colorBox.style.backgroundColor = modelColors[model];
+        
+        const modelName = document.createElement('span');
+        modelName.textContent = model;
+        
+        legendItem.appendChild(colorBox);
+        legendItem.appendChild(modelName);
+        legendContainer.appendChild(legendItem);
+      }
+      
+      // Create top models section
+      const topModelsContainer = document.getElementById('topModelsContainer');
+      
+      benchmarks.forEach(benchmark => {
+        const section = document.createElement('div');
+        section.className = 'benchmark-section';
+        
+        const title = document.createElement('div');
+        title.className = 'benchmark-title';
+        title.textContent = benchmarkNames[benchmark];
+        
+        section.appendChild(title);
+        
+        topModels[benchmark].forEach((item, index) => {
+          const topModel = document.createElement('div');
+          topModel.className = 'top-model';
+          
+          const rank = document.createElement('div');
+          rank.className = `rank rank-${index + 1}`;
+          rank.textContent = index + 1;
+          
+          const modelColor = document.createElement('div');
+          modelColor.className = 'model-color';
+          modelColor.style.backgroundColor = modelColors[item.model];
+          
+          const modelName = document.createElement('div');
+          modelName.className = 'model-name';
+          modelName.textContent = item.model;
+          
+          const modelScore = document.createElement('div');
+          modelScore.className = 'model-score';
+          
+          if (benchmark === "aider_polyglot") {
+            modelScore.textContent = `${item.score.toFixed(1)}%`;
+          } else if (benchmark === "kcores_llm_arena") {
+            const originalScore = (item.score * 400) / 100;
+            modelScore.textContent = `${originalScore.toFixed(1)} (${item.score.toFixed(1)}%)`;
+          }
+          
+          topModel.appendChild(rank);
+          topModel.appendChild(modelColor);
+          topModel.appendChild(modelName);
+          topModel.appendChild(modelScore);
+          
+          section.appendChild(topModel);
+        });
+        
+        topModelsContainer.appendChild(section);
+      });
+    });
+  </script>
+</body>
+</html>

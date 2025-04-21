@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Model Benchmark Results</title>
+    <script src="results.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        color: #333;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .chart-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 40px;
+      }
+      .top-models {
+        display: flex;
+        justify-content: space-around;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+      }
+      .top-models-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        width: 45%;
+        min-width: 300px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      }
+      .top-models-section h3 {
+        margin-top: 0;
+        color: #2c3e50;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+      }
+      .model-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .model-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        margin-right: 10px;
+      }
+      .model-name {
+        font-weight: bold;
+        margin-right: 10px;
+      }
+      .model-score {
+        color: #666;
+      }
+      #combinedChart {
+        max-width: 900px;
+        max-height: 600px;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 20px;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        margin: 5px 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    
+    <div class="top-models">
+      <div class="top-models-section" id="aiderTopModels">
+        <h3>Top Models: Aider Polyglot Coding Leaderboard</h3>
+        <!-- Will be populated by JavaScript -->
+      </div>
+      <div class="top-models-section" id="kcoresTopModels">
+        <h3>Top Models: KCORES LLM Arena</h3>
+        <!-- Will be populated by JavaScript -->
+      </div>
+    </div>
+    
+    <div class="chart-container">
+      <canvas id="combinedChart"></canvas>
+    </div>
+    
+    <div class="legend" id="modelLegend">
+      <!-- Will be populated by JavaScript -->
+    </div>
+    
+    <script>
+      // Process the data
+      const benchmarkData = {
+        "aider_polyglot": {
+          name: "Aider polyglot coding leaderboard",
+          metric: "percent_correct",
+          normalize: (value) => value // Already normalized
+        },
+        "kcores_llm_arena": {
+          name: "KCORES LLM Arena",
+          metric: "normalized_score",
+          normalize: (value) => (value / 400) * 100 // Normalize from 0-400 to 0-100
+        }
+      };
+      
+      // Prepare datasets for Chart.js
+      const datasets = [];
+      const modelColors = {};
+      const colorPalette = [
+        '#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
+        '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'
+      ];
+      
+      // Assign colors to models
+      models.forEach((model, index) => {
+        modelColors[model] = colorPalette[index % colorPalette.length];
+      });
+      
+      // Create datasets for each benchmark
+      Object.keys(benchmarkData).forEach(benchmark => {
+        const benchmarkInfo = benchmarkData[benchmark];
+        const data = [];
+        
+        models.forEach(model => {
+          if (results[model] && results[model][benchmark]) {
+            const rawValue = results[model][benchmark][benchmarkInfo.metric];
+            const normalizedValue = benchmarkInfo.normalize(rawValue);
+            data.push({
+              model: model,
+              value: normalizedValue
+            });
+          }
+        });
+        
+        // Sort by value descending
+        data.sort((a, b) => b.value - a.value);
+        
+        datasets.push({
+          benchmark: benchmark,
+          name: benchmarkInfo.name,
+          data: data
+        });
+      });
+      
+      // Display top models for each benchmark
+      function displayTopModels(benchmark, elementId) {
+        const container = document.getElementById(elementId);
+        const benchmarkData = datasets.find(d => d.benchmark === benchmark);
+        
+        if (!benchmarkData) return;
+        
+        // Take top 3 models
+        const topModels = benchmarkData.data.slice(0, 3);
+        
+        topModels.forEach((item, index) => {
+          const modelItem = document.createElement('div');
+          modelItem.className = 'model-item';
+          
+          const medal = ['🥇', '🥈', '🥉'][index];
+          const colorBox = document.createElement('div');
+          colorBox.className = 'model-color';
+          colorBox.style.backgroundColor = modelColors[item.model];
+          
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'model-name';
+          nameSpan.textContent = `${medal} ${item.model}`;
+          
+          const scoreSpan = document.createElement('span');
+          scoreSpan.className = 'model-score';
+          scoreSpan.textContent = `${item.value.toFixed(1)}`;
+          
+          modelItem.appendChild(colorBox);
+          modelItem.appendChild(nameSpan);
+          modelItem.appendChild(scoreSpan);
+          container.appendChild(modelItem);
+        });
+      }
+      
+      // Create the combined chart
+      function createCombinedChart() {
+        const ctx = document.getElementById('combinedChart').getContext('2d');
+        
+        // Prepare data for Chart.js
+        const chartData = {
+          labels: datasets.map(d => d.name),
+          datasets: []
+        };
+        
+        // Get all unique models that appear in any benchmark
+        const allModels = new Set();
+        datasets.forEach(dataset => {
+          dataset.data.forEach(item => {
+            allModels.add(item.model);
+          });
+        });
+        
+        // Create a dataset for each model
+        Array.from(allModels).forEach(model => {
+          const modelData = [];
+          
+          datasets.forEach(dataset => {
+            const found = dataset.data.find(item => item.model === model);
+            modelData.push(found ? found.value : null);
+          });
+          
+          chartData.datasets.push({
+            label: model,
+            data: modelData,
+            backgroundColor: modelColors[model],
+            borderColor: modelColors[model],
+            borderWidth: 1
+          });
+        });
+        
+        new Chart(ctx, {
+          type: 'bar',
+          data: chartData,
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+                title: {
+                  display: true,
+                  text: 'Normalized Score (0-100)'
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false // We'll use our custom legend
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return `${context.dataset.label}: ${context.raw.toFixed(1)}`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+      
+      // Create model legend
+      function createModelLegend() {
+        const legendContainer = document.getElementById('modelLegend');
+        
+        Object.keys(modelColors).forEach(model => {
+          const legendItem = document.createElement('div');
+          legendItem.className = 'legend-item';
+          
+          const colorBox = document.createElement('div');
+          colorBox.className = 'model-color';
+          colorBox.style.backgroundColor = modelColors[model];
+          
+          const nameSpan = document.createElement('span');
+          nameSpan.textContent = model;
+          
+          legendItem.appendChild(colorBox);
+          legendItem.appendChild(nameSpan);
+          legendContainer.appendChild(legendItem);
+        });
+      }
+      
+      // Initialize the visualization
+      document.addEventListener('DOMContentLoaded', function() {
+        displayTopModels('aider_polyglot', 'aiderTopModels');
+        displayTopModels('kcores_llm_arena', 'kcoresTopModels');
+        createCombinedChart();
+        createModelLegend();
+      });
+    </script>
+  </body>
+</html>
