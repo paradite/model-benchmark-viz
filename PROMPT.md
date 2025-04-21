@@ -3,8 +3,9 @@ Create a visualization of the model benchmark results using HTML, CSS, and JavaS
 The visualization must satisfy the following requirements:
 
 - The visualization must focus on the primary metric for each benchmark:
-  - `percent_correct` for `aider_polyglot`
-  - `normalized_score` for `kcores_llm_arena`
+  - The scores must be normalized to a 0-100 scale.
+  - `percent_correct` for `aider_polyglot` (already normalized)
+  - `normalized_score` for `kcores_llm_arena` (min is 0, max is 400, normalize it to 0-100)
 - The visualization must use friendly names for the benchmarks, which are:
   - `aider_polyglot` -> "Aider polyglot coding leaderboard"
   - `kcores_llm_arena` -> "KCORES LLM Arena"
