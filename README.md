@@ -6,7 +6,7 @@ A project by [16x Eval](https://eval.16x.engineer/) to evaluate different models
 
 ### 🥇 GPT-4.1
 
-GPT-4.1 generated the best looking visualization:
+GPT-4.1 generated the best looking visualization, with clear labels on the bar chart and legend:
 
 ![GPT-4.1](output/gpt-4.1.png)
 
@@ -14,7 +14,7 @@ Source code: [gpt-4.1.html](output/gpt-4.1.html)
 
 ### 🥈 o3
 
-o3 generated the second best visualization:
+o3 generated the second best visualization, with clear labels on the bar chart:
 
 ![o3](output/o3.png)
 
