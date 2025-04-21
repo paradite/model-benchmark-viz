@@ -8,7 +8,7 @@ The visualization must satisfy the following requirements:
 - The visualization must use friendly names for the benchmarks, which are:
   - `aider_polyglot` -> "Aider polyglot coding leaderboard"
   - `kcores_llm_arena` -> "KCORES LLM Arena"
-- The visualization must show the relative performance of the models for each benchmark.
+- The visualization must compare the relative performance of the models across the benchmarks.
 - The top 3 models for each benchmark should be clearly labeled.
 - Each model should have an associated color to make it easier to identify.
 
