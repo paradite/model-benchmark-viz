@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Model Benchmark Results</title>
+  <script src="results.js"></script>
+  <!-- Include Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+    }
+    canvas {
+      max-width: 100%;
+      height: 600px;
+      margin: 0 auto;
+      display: block;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 5px 15px;
+      font-size: 14px;
+    }
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      margin-right: 6px;
+      display: inline-block;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Model Benchmark Results</h1>
+  <canvas id="benchmarkChart"></canvas>
+  <div class="legend" id="legend"></div>
+
+  <script>
+    // Define friendly names
+    const benchmarkNames = {
+      "aider_polyglot": "Aider polyglot coding leaderboard",
+      "kcores_llm_arena": "KCORES LLM Arena"
+    };
+
+    // Normalize kcores_llm_arena score to 0-100
+    const maxScore = 400;
+
+    // Generate unique colors for each model
+    const colors = [
+      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD',
+      '#C7B7A4', '#FFB5C5', '#A5E6CF', '#D8BFD8', '#8EE5EE'
+    ];
+
+    const modelColors = {};
+    models.forEach((model, index) => {
+      modelColors[model] = colors[index % colors.length];
+    });
+
+    // Prepare datasets
+    const datasets = [];
+
+    // For each benchmark, create a dataset
+    const benchmarks = ['aider_polyglot', 'kcores_llm_arena'];
+
+    benchmarks.forEach((benchmarkKey, idx) => {
+      const benchmarkName = benchmarkNames[benchmarkKey];
+      const data = [];
+
+      models.forEach(model => {
+        const entry = results[model][benchmarkKey];
+        if (entry) {
+          let score = 0;
+          if (benchmarkKey === 'aider_polyglot') {
+            score = entry.percent_correct;
+          } else if (benchmarkKey === 'kcores_llm_arena') {
+            score = (entry.normalized_score / maxScore) * 100;
+          }
+          data.push({
+            model,
+            score
+          });
+        }
+      });
+
+      // Sort and get top 3
+      const top3 = data.sort((a, b) => b.score - a.score).slice(0, 3).map(d => d.model);
+
+      datasets.push({
+        label: benchmarkName,
+        data: data.map(d => d.score),
+        borderColor: `hsl(${idx * 120}, 70%, 50%)`,
+        backgroundColor: `hsl(${idx * 120}, 70%, 50%, 0.2)`,
+        top3: top3
+      });
+    });
+
+    // Prepare labels (all models)
+    const labels = models;
+
+    // Create chart
+    const ctx = document.getElementById('benchmarkChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: labels,
+        datasets: datasets.map(ds => ({
+          label: ds.label,
+          data: labels.map((label, i) => ds.data[i]),
+          borderColor: ds.borderColor,
+          backgroundColor: ds.backgroundColor,
+          pointBackgroundColor: labels.map((label, i) => ds.top3.includes(label) ? 'gold' : ds.borderColor),
+          pointRadius: labels.map((label, i) => ds.top3.includes(label) ? 5 : 3),
+          pointHoverRadius: 7
+        }))
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Model Benchmark Comparison (Normalized 0-100)',
+            font: {
+              size: 18
+            }
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false
+          },
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          r: {
+            min: 0,
+            max: 100,
+            ticks: {
+              stepSize: 20
+            }
+          }
+        }
+      }
+    });
+
+    // Create legend
+    const legend = document.getElementById('legend');
+    Object.entries(modelColors).forEach(([model, color]) => {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.innerHTML = `
+        <span class="legend-color" style="background-color: ${color}"></span>
+        ${model}
+      `;
+      legend.appendChild(item);
+    });
+  </script>
+</body>
+</html>

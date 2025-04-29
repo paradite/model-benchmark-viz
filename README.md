@@ -54,11 +54,17 @@ Source code: [deepseek-v3.html](output/deepseek-v3.html)
 
 ### Other models
 
-Qwen3 235B A22B (via Parasail on OpenRouter) generated a visualization that is very small and hard to read.
+Qwen3 235B A22B (thinking, via Parasail on OpenRouter) generated a visualization that is very small and hard to read.
 
 ![qwen3](output/qwen3.png)
 
 Source code: [qwen3.html](output/qwen3.html)
+
+I also tried the non-thinking version of Qwen3 (by adding `/no_think` to the end of the prompt, via Parasail on OpenRouter), it produced a nice radar chart visualization, which is interesting, but not suitable for the task of comparing the performance of the models:
+
+![qwen3-no-think](output/qwen3-no-think.png)
+
+Source code: [qwen3-no-think.html](output/qwen3-no-think.html)
 
 ## Evaluation Results
 
