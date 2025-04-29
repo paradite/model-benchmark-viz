@@ -52,6 +52,14 @@ DeepSeek V3 generated a similar visualization to Gemini 2.5 Pro.
 
 Source code: [deepseek-v3.html](output/deepseek-v3.html)
 
+### Other models
+
+Qwen3 235B A22B (via Parasail on OpenRouter) generated a visualization that is very small and hard to read.
+
+![qwen3](output/qwen3.png)
+
+Source code: [qwen3.html](output/qwen3.html)
+
 ## Evaluation Results
 
 Evaluations are carried out using [16x Eval](https://eval.16x.engineer/). Here is the screenshot:

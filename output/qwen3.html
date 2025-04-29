@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Model Benchmark Results</title>
+  <script src="results.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    canvas {
+      max-width: 1000px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Model Benchmark Results</h1>
+  <canvas id="benchmarkChart"></canvas>
+  <script>
+    // Process data
+    const benchmarkNames = {
+      'aider_polyglot': 'Aider polyglot coding leaderboard',
+      'kcores_llm_arena': 'KCORES LLM Arena'
+    };
+
+    const labels = models;
+
+    // Extract scores
+    const aiderScores = labels.map(model => {
+      const data = results[model]['aider_polyglot'];
+      return data ? data.percent_correct : null;
+    });
+
+    const kcoresScores = labels.map(model => {
+      const data = results[model]['kcores_llm_arena'];
+      return data ? (data.normalized_score / 4) : null;
+    });
+
+    // Assign unique colors to models
+    const colors = [
+      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96A2A7', '#F1C40F',
+      '#E74C3C', '#3498DB', '#9B59B6', '#1ABC9C', '#34495E'
+    ];
+    const modelColors = labels.map((_, i) => colors[i % colors.length]);
+
+    // Find top 3 indices for each benchmark
+    function getTopIndices(dataArray) {
+      const validIndices = [];
+      dataArray.forEach((score, i) => {
+        if (score !== null) validIndices.push(i);
+      });
+      validIndices.sort((a, b) => dataArray[b] - dataArray[a]);
+      return validIndices.slice(0, 3);
+    }
+
+    const topAiderIndices = getTopIndices(aiderScores);
+    const topKcoresIndices = getTopIndices(kcoresScores);
+
+    // Create chart
+    const ctx = document.getElementById('benchmarkChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: benchmarkNames['aider_polyglot'],
+            data: aiderScores,
+            backgroundColor: modelColors
+          },
+          {
+            label: benchmarkNames['kcores_llm_arena'],
+            data: kcoresScores,
+            backgroundColor: modelColors
+          }
+        ]
+      },
+      options: {
+        plugins: {
+          legend: {
+            position: 'top',
+          },
+          title: {
+            display: true,
+            text: 'Model Benchmark Scores (Normalized to 0-100)'
+          },
+          datalabels: {
+            anchor: 'end',
+            align: 'top',
+            formatter: function(value, context) {
+              const datasetIndex = context.datasetIndex;
+              const index = context.dataIndex;
+              if (datasetIndex === 0 && topAiderIndices.includes(index)) {
+                return Math.round(value * 10) / 10;
+              } else if (datasetIndex === 1 && topKcoresIndices.includes(index)) {
+                return Math.round(value * 10) / 10;
+              }
+              return '';
+            },
+            font: {
+              weight: 'bold'
+            },
+            color: 'black'
+          }
+        },
+        responsive: true,
+        scales: {
+          x: {
+            stacked: false,
+            title: {
+              display: true,
+              text: 'Model'
+            },
+            ticks: {
+              autoSkip: false,
+              rotation: 45
+            }
+          },
+          y: {
+            beginAtZero: true,
+            max: 100,
+            title: {
+              display: true,
+              text: 'Normalized Score'
+            }
+          }
+        }
+      },
+      plugins: [ChartDataLabels]
+    });
+  </script>
+</body>
+</html>
