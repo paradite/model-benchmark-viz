@@ -62,6 +62,11 @@ Evaluations are carried out using [16x Eval](https://eval.16x.engineer/). Here i
 
 The prompt used to generate the visualization is [PROMPT.md](PROMPT.md).
 
+Context used:
+
+- [results.js](results.js)
+- [sample-index.html](sample-index.html)
+
 ## Benchmark Data
 
 The data is stored in `results.js`.
