@@ -1,6 +1,6 @@
 # Model Benchmark Viz
 
-A project to evaluate different models on their ability to generate visualizations of model benchmarks for coding.
+A project by [16x Eval](https://eval.16x.engineer/) to evaluate different models on their ability to generate visualizations of model benchmarks for coding.
 
 ## Results
 
