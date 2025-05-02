@@ -52,7 +52,7 @@ DeepSeek V3 generated a similar visualization to Gemini 2.5 Pro.
 
 Source code: [deepseek-v3.html](output/deepseek-v3.html)
 
-### Other models
+### Qwen3 235B A22B
 
 Qwen3 235B A22B (thinking, via Parasail on OpenRouter) generated a visualization that is very small and hard to read.
 
@@ -65,6 +65,16 @@ I also tried the non-thinking version of Qwen3 (by adding `/no_think` to the end
 ![qwen3-no-think](output/qwen3-no-think.png)
 
 Source code: [qwen3-no-think.html](output/qwen3-no-think.html)
+
+### Mercury Coder Small
+
+Mercury Coder Small generated a visualization that is buggy and not very readable.
+
+It does not seem to show both benchmarks, and the labels are not very readable.
+
+![mercury-coder-small](output/mercury-coder-small.png)
+
+Source code: [mercury-coder-small.html](output/mercury-coder-small.html)
 
 ## Evaluation Results
 

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Model Benchmark Results</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="results.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .chart {
+      width: 100%;
+      height: 400px;
+    }
+    .bar {
+      fill: #69b3a2;
+    }
+    .bar:hover {
+      fill: #407464;
+    }
+    .axis-label {
+      font-size: 14px;
+      text-anchor: middle;
+    }
+    .axis-path {
+      stroke: #ccc;
+    }
+    .axis-tick {
+      stroke: #ccc;
+    }
+    .axis-tick-label {
+      font-size: 12px;
+      fill: #555;
+    }
+    .top-model {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Model Benchmark Results</h1>
+  <div id="chart" class="chart"></div>
+
+  <script>
+    // Normalize scores to 0-100 scale
+    const normalizeScore = (score, min, max) => ((score - min) / (max - min)) * 100;
+
+    // Extract and normalize scores
+    const benchmarks = {
+      "Aider polyglot coding leaderboard": "aider_polyglot",
+      "KCORES LLM Arena": "kcores_llm_arena"
+    };
+
+    const data = [];
+
+    models.forEach(model => {
+      const entry = { model };
+      Object.keys(benchmarks).forEach(benchmark => {
+        const key = benchmarks[benchmark];
+        if (results[model][key]) {
+          if (key === "aider_polyglot") {
+            entry[benchmark] = results[model][key].percent_correct;
+          } else if (key === "kcores_llm_arena") {
+            entry[benchmark] = normalizeScore(results[model][key].normalized_score, 0, 400);
+          }
+        }
+      });
+      data.push(entry);
+    });
+
+    // Find top 3 models for each benchmark
+    const topModels = {};
+    Object.keys(benchmarks).forEach(benchmark => {
+      topModels[benchmark] = data.slice().sort((a, b) => b[benchmark] - a[benchmark]).slice(0, 3);
+    });
+
+    // Create color scale
+    const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+
+    // Create chart
+    const margin = { top: 20, right: 30, bottom: 40, left: 90 };
+    const width = 800 - margin.left - margin.right;
+    const height = 400 - margin.top - margin.bottom;
+
+    const svg = d3.select("#chart")
+      .append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+    // X-axis
+    const x = d3.scaleBand()
+      .domain(data.map(d => d.model))
+      .range([0, width])
+      .padding(0.1);
+
+    svg.append("g")
+      .attr("transform", `translate(0, ${height})`)
+      .call(d3.axisBottom(x));
+
+    // Y-axis
+    const y = d3.scaleLinear()
+      .domain([0, 100])
+      .range([height, 0]);
+
+    svg.append("g")
+      .call(d3.axisLeft(y));
+
+    // Bars
+    const bars = svg.selectAll(".bar")
+      .data(data)
+      .enter().append("rect")
+      .attr("class", "bar")
+      .attr("x", d => x(d.model))
+      .attr("y", d => y(d["Aider polyglot coding leaderboard"]))
+      .attr("width", x.bandwidth())
+      .attr("height", d => height - y(d["Aider polyglot coding leaderboard"]))
+      .attr("fill", d => colorScale(d.model));
+
+    // Top 3 labels
+    Object.keys(benchmarks).forEach(benchmark => {
+      topModels[benchmark].forEach((model, index) => {
+        svg.append("text")
+          .attr("x", x(model.model) + x.bandwidth() / 2)
+          .attr("y", y(model[benchmark]) - 5)
+          .attr("text-anchor", "middle")
+          .attr("class", "top-model")
+          .text(`${index + 1}. ${model.model}`);
+      });
+    });
+
+    // Add axis labels
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", height + margin.bottom)
+      .attr("text-anchor", "middle")
+      .attr("class", "axis-label")
+      .text("Model");
+
+    svg.append("text")
+      .attr("x", -height / 2)
+      .attr("y", -margin.left)
+      .attr("transform", "rotate(-90)")
+      .attr("text-anchor", "middle")
+      .attr("class", "axis-label")
+      .text("Score (0-100)");
+  </script>
+</body>
+</html>
