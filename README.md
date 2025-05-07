@@ -36,15 +36,15 @@ I also ran Claude 3.7 again with the same prompt, but it produced a bar chart vi
 
 Source code: [claude-3.7-2.html](output/claude-3.7-2.html)
 
-### 4th place: Gemini 2.5 Pro and DeepSeek V3
+### 4th place: Gemini 2.5 Pro Experimental and DeepSeek V3
 
-Gemini 2.5 Pro, despite being ranked as the top model, produced a visualization that is not as good as the other models, with no labels on the bar chart.
+Gemini 2.5 Pro Experimental, despite being ranked as the top model, produced a visualization that is not as good as the other models, with no labels on the bar chart.
 
-![gemini-2.5-pro](output/gemini-2.5-pro.png)
+![gemini-2.5-pro-exp](output/gemini-2.5-pro-exp.png)
 
-Source code: [gemini-2.5-pro.html](output/gemini-2.5-pro.html)
+Source code: [gemini-2.5-pro-exp.html](output/gemini-2.5-pro-exp.html)
 
-Re-running the prompt again with Gemini 2.5 Pro did not produce a better visualization.
+Re-running the prompt again with Gemini 2.5 Pro Experimental did not produce a better visualization.
 
 DeepSeek V3 generated a similar visualization to Gemini 2.5 Pro.
 
@@ -75,6 +75,22 @@ It does not seem to show both benchmarks, and the labels are not very readable.
 ![mercury-coder-small](output/mercury-coder-small.png)
 
 Source code: [mercury-coder-small.html](output/mercury-coder-small.html)
+
+### Gemini 2.5 Pro Preview 03-25
+
+Gemini 2.5 Pro Preview 03-25 generated a visualization that is very similar to the Gemini 2.5 Pro Experimental visualization.
+
+![gemini-2.5-pro-preview-03-25](output/gemini-2.5-pro-preview-03-25.png)
+
+Source code: [gemini-2.5-pro-preview-03-25.html](output/gemini-2.5-pro-preview-03-25.html)
+
+### Gemini 2.5 Pro Preview 05-06
+
+Gemini 2.5 Pro Preview 05-06 generated a visualization that is very similar to the Gemini 2.5 Pro Experimental visualization.
+
+![gemini-2.5-pro-preview-05-06](output/gemini-2.5-pro-preview-05-06.png)
+
+Source code: [gemini-2.5-pro-preview-05-06.html](output/gemini-2.5-pro-preview-05-06.html)
 
 ## Evaluation Results
 

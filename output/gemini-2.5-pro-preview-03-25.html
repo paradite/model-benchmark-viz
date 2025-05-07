@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Model Benchmark Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="results.js"></script>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+          sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+        margin: 0;
+        padding: 0;
+        background-color: #f4f6f8;
+        color: #333;
+      }
+      .container {
+        width: 90%;
+        max-width: 1200px;
+        margin: 30px auto;
+        background-color: #fff;
+        padding: 25px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        text-align: center;
+        color: #2c3e50;
+        margin-top: 20px;
+        margin-bottom: 10px; /* Reduced margin for h1 as container has padding */
+      }
+      #chartContainer {
+        /* Styles moved to .container */
+      }
+      #top3SummaryContainer h2 {
+        color: #2c3e50;
+        border-bottom: 2px solid #e0e0e0;
+        padding-bottom: 10px;
+        margin-top: 0;
+      }
+      #top3SummaryContainer h3 {
+        color: #34495e;
+        margin-top: 20px;
+        margin-bottom: 10px;
+      }
+      #top3SummaryContainer ol {
+        list-style-type: decimal;
+        padding-left: 25px;
+        margin-left: 0; /* Align with heading */
+      }
+      #top3SummaryContainer li {
+        margin-bottom: 8px;
+        color: #555;
+        line-height: 1.6;
+      }
+      #top3SummaryContainer p {
+        color: #555;
+        margin-left: 5px;
+      }
+      /* Ensure canvas is responsive */
+      canvas {
+        max-width: 100%;
+        height: auto !important; /* Override Chart.js inline style if maintainAspectRatio is true */
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Model Benchmark Comparison</h1>
+      <div id="chartCanvasContainer">
+        <canvas id="benchmarkChart"></canvas>
+      </div>
+    </div>
+
+    <div
+      class="container"
+      id="top3SummaryContainer"
+    >
+      <!-- Summary will be injected here by JS -->
+    </div>
+
+    <script>
+      // Ensure results and models are loaded (they are global from results.js)
+      if (typeof results === "undefined" || typeof models === "undefined") {
+        console.error("Error: results.js not loaded or data is missing.");
+        const errorDiv = document.createElement("div");
+        errorDiv.innerHTML =
+          '<h1 style="color:red; text-align:center;">Error loading benchmark data. Please ensure results.js is present and correct.</h1>';
+        document.body.prepend(errorDiv);
+      } else {
+        const benchmarkDefinitions = {
+          aider_polyglot: {
+            friendlyName: "Aider polyglot coding leaderboard",
+            metricKey: "percent_correct",
+            normalizeFn: score => score, // Already 0-100
+          },
+          kcores_llm_arena: {
+            friendlyName: "KCORES LLM Arena",
+            metricKey: "normalized_score",
+            normalizeFn: score => (score / 400) * 100, // Normalize 0-400 to 0-100
+          },
+        };
+
+        const modelNames = Object.keys(results);
+        const benchmarkIds = Object.keys(benchmarkDefinitions);
+        const benchmarkFriendlyNames = benchmarkIds.map(
+          id => benchmarkDefinitions[id].friendlyName,
+        );
+
+        const modelColors = {};
+        const colorPalette = [
+          "#4E79A7",
+          "#F28E2B",
+          "#E15759",
+          "#76B7B2",
+          "#59A14F",
+          "#EDC948",
+          "#B07AA1",
+          "#FF9DA7",
+          "#9C755F",
+          "#BAB0AC",
+        ];
+        modelNames.forEach((modelName, index) => {
+          modelColors[modelName] = colorPalette[index % colorPalette.length];
+        });
+
+        const benchmarkPerformance = {};
+        benchmarkFriendlyNames.forEach(friendlyName => {
+          benchmarkPerformance[friendlyName] = [];
+        });
+
+        benchmarkIds.forEach(bId => {
+          const def = benchmarkDefinitions[bId];
+          const currentBenchmarkPerformances = [];
+          modelNames.forEach(modelName => {
+            if (
+              results[modelName] &&
+              results[modelName][bId] &&
+              typeof results[modelName][bId][def.metricKey] !== "undefined"
+            ) {
+              const rawScore = results[modelName][bId][def.metricKey];
+              const normalizedScore = def.normalizeFn(rawScore);
+              currentBenchmarkPerformances.push({
+                model: modelName,
+                score: normalizedScore,
+                originalScore: rawScore,
+              });
+            } else {
+              // Add entry with null score if model exists but no data for this benchmark
+              // This helps in tooltip consistency if we want to show "N/A"
+              currentBenchmarkPerformances.push({
+                model: modelName,
+                score: null,
+                originalScore: null,
+              });
+            }
+          });
+
+          currentBenchmarkPerformances.sort((a, b) => {
+            if (a.score === null) return 1; // nulls go to the end
+            if (b.score === null) return -1;
+            return b.score - a.score; // sort by score descending
+          });
+
+          currentBenchmarkPerformances.forEach((item, index) => {
+            if (item.score !== null) {
+              item.rank = index + 1;
+            } else {
+              item.rank = null; // No rank for missing scores
+            }
+          });
+          benchmarkPerformance[def.friendlyName] = currentBenchmarkPerformances;
+        });
+
+        const datasets = modelNames.map(modelName => {
+          const data = benchmarkFriendlyNames.map(friendlyName => {
+            const perfEntry = benchmarkPerformance[friendlyName].find(p => p.model === modelName);
+            return perfEntry ? perfEntry.score : null;
+          });
+          return {
+            label: modelName,
+            data: data,
+            backgroundColor: modelColors[modelName],
+            borderColor: modelColors[modelName],
+            borderWidth: 1,
+          };
+        });
+
+        const ctx = document.getElementById("benchmarkChart").getContext("2d");
+        const benchmarkChart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: benchmarkFriendlyNames,
+            datasets: datasets,
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false, // Allows chart to better fit container
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+                title: {
+                  display: true,
+                  text: "Normalized Score (0-100)",
+                  font: {size: 14, weight: "bold"},
+                  padding: {top: 0, bottom: 10},
+                },
+                ticks: {
+                  padding: 5,
+                },
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: "Benchmarks",
+                  font: {size: 14, weight: "bold"},
+                  padding: {top: 10, bottom: 0},
+                },
+                ticks: {
+                  autoSkip: false,
+                  maxRotation: 20,
+                  minRotation: 0,
+                  font: {size: 11},
+                },
+              },
+            },
+            plugins: {
+              title: {
+                display: true,
+                text: "Model Performance Across Benchmarks",
+                font: {size: 18, weight: "bold"},
+                padding: {top: 10, bottom: 25},
+              },
+              tooltip: {
+                backgroundColor: "rgba(0,0,0,0.8)",
+                titleFont: {weight: "bold"},
+                bodyFont: {size: 13},
+                padding: 10,
+                callbacks: {
+                  label: function (tooltipItem) {
+                    const modelName = tooltipItem.dataset.label;
+                    const benchmarkName = benchmarkFriendlyNames[tooltipItem.dataIndex];
+                    const normalizedScore = tooltipItem.raw;
+
+                    if (normalizedScore === null || typeof normalizedScore === "undefined") {
+                      return `${modelName}: No data`;
+                    }
+
+                    const perfEntry = benchmarkPerformance[benchmarkName].find(
+                      p => p.model === modelName,
+                    );
+
+                    let lines = [];
+                    // Model name is usually in the tooltip title by default if multiple datasets
+                    // lines.push(`Model: ${modelName}`);
+                    // Benchmark name can be part of title or first line
+                    // lines.push(`Benchmark: ${benchmarkName}`);
+                    lines.push(`Normalized Score: ${normalizedScore.toFixed(1)} / 100`);
+                    if (perfEntry) {
+                      if (perfEntry.originalScore !== null) {
+                        lines.push(`Original Score: ${perfEntry.originalScore.toFixed(1)}`);
+                      }
+                      if (perfEntry.rank) {
+                        lines.push(`Rank: ${perfEntry.rank}`);
+                      }
+                    }
+                    return lines;
+                  },
+                  title: function (tooltipItems) {
+                    // By default, title is the x-axis label (benchmark name)
+                    // We want to add model name if not already clear
+                    if (tooltipItems.length > 0) {
+                      const item = tooltipItems[0];
+                      const modelName = item.dataset.label;
+                      const benchmarkName = item.label; // x-axis label
+                      return `${modelName} - ${benchmarkName}`;
+                    }
+                    return "";
+                  },
+                },
+              },
+              legend: {
+                position: "bottom",
+                labels: {
+                  padding: 20,
+                  font: {size: 12},
+                },
+              },
+            },
+            // Scriptable options for dynamic styling (e.g., top 3)
+            elements: {
+              bar: {
+                borderColor: function (context) {
+                  if (
+                    context.raw === null ||
+                    typeof context.raw === "undefined" ||
+                    !context.dataset.label
+                  ) {
+                    return "rgba(0,0,0,0.1)"; // Default for no data or context issues
+                  }
+                  const modelName = context.dataset.label;
+                  const benchmarkName = benchmarkFriendlyNames[context.dataIndex];
+
+                  // Ensure benchmarkName is valid before accessing benchmarkPerformance
+                  if (!benchmarkName || !benchmarkPerformance[benchmarkName]) {
+                    return modelColors[modelName] || "rgba(0,0,0,0.1)";
+                  }
+
+                  const perfEntry = benchmarkPerformance[benchmarkName].find(
+                    p => p.model === modelName,
+                  );
+
+                  if (perfEntry && perfEntry.rank && perfEntry.rank <= 3) {
+                    return "#FFBF00"; // Brighter Gold for top 3 border
+                  }
+                  return modelColors[modelName];
+                },
+                borderWidth: function (context) {
+                  if (
+                    context.raw === null ||
+                    typeof context.raw === "undefined" ||
+                    !context.dataset.label
+                  ) {
+                    return 1;
+                  }
+                  const modelName = context.dataset.label;
+                  const benchmarkName = benchmarkFriendlyNames[context.dataIndex];
+
+                  if (!benchmarkName || !benchmarkPerformance[benchmarkName]) {
+                    return 1;
+                  }
+
+                  const perfEntry = benchmarkPerformance[benchmarkName].find(
+                    p => p.model === modelName,
+                  );
+
+                  if (perfEntry && perfEntry.rank && perfEntry.rank <= 3) {
+                    return 2.5; // Thicker border for top 3
+                  }
+                  return 1;
+                },
+              },
+            },
+          },
+        });
+
+        // Generate and display Top 3 summary
+        const summaryDiv = document.getElementById("top3SummaryContainer");
+        let summaryHTML = "<h2>Top 3 Models per Benchmark</h2>";
+        benchmarkFriendlyNames.forEach(benchmarkName => {
+          summaryHTML += `<h3>${benchmarkName}</h3>`;
+          const topModels = benchmarkPerformance[benchmarkName]
+            .filter(p => p.rank && p.rank <= 3 && p.score !== null)
+            .sort((a, b) => a.rank - b.rank); // Ensure sorted by rank for display
+
+          if (topModels.length > 0) {
+            summaryHTML += "<ol>";
+            topModels.forEach(p => {
+              summaryHTML += `<li>${p.model} (Normalized Score: ${p.score.toFixed(1)})</li>`;
+            });
+            summaryHTML += "</ol>";
+          } else {
+            summaryHTML +=
+              "<p>No models ranked in the top 3 for this benchmark, or data unavailable.</p>";
+          }
+        });
+        summaryDiv.innerHTML = summaryHTML;
+
+        // Adjust canvas height after chart initialization if needed, or set fixed height for chartCanvasContainer
+        document.getElementById("chartCanvasContainer").style.height = "500px"; // Example fixed height
+        benchmarkChart.resize(); // Call resize if container size changed after init
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Model Benchmark Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="results.js"></script>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+          sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+        margin: 0;
+        padding: 20px;
+        background-color: #f8f9fa;
+        color: #343a40;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      h1 {
+        color: #007bff;
+        margin-bottom: 30px;
+      }
+      h2 {
+        color: #17a2b8;
+        margin-top: 40px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 10px;
+      }
+      h3 {
+        color: #28a745;
+        margin-top: 15px;
+        margin-bottom: 10px;
+      }
+      .container {
+        width: 90%;
+        max-width: 1200px;
+        background-color: #ffffff;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+      }
+      #chart-container {
+        position: relative; /* Needed for Chart.js responsiveness */
+        height: 60vh; /* Adjust as needed */
+        min-height: 400px;
+      }
+      #model-legend {
+        list-style: none;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px 20px; /* row-gap column-gap */
+      }
+      #model-legend li {
+        display: flex;
+        align-items: center;
+        font-size: 0.9em;
+      }
+      .legend-color-box {
+        display: inline-block;
+        width: 18px;
+        height: 12px;
+        margin-right: 8px;
+        border: 1px solid #ccc;
+      }
+      #top-models-container .benchmark-top3 {
+        margin-bottom: 25px;
+        padding-left: 10px;
+      }
+      #top-models-container ol {
+        padding-left: 25px;
+        list-style-type: decimal;
+      }
+      #top-models-container li {
+        margin-bottom: 8px;
+        font-size: 0.95em;
+      }
+      #top-models-container li .model-name {
+        font-weight: bold;
+      }
+      #top-models-container li .rank-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        font-size: 0.8em;
+        font-weight: bold;
+        color: white;
+        border-radius: 4px;
+        margin-left: 8px;
+      }
+      .rank-1 {
+        background-color: #ffd700;
+        color: #333;
+      } /* Gold */
+      .rank-2 {
+        background-color: #c0c0c0;
+        color: #333;
+      } /* Silver */
+      .rank-3 {
+        background-color: #cd7f32;
+      } /* Bronze */
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+
+    <div class="container">
+      <h2>Performance Comparison</h2>
+      <div id="chart-container">
+        <canvas id="benchmarkChart"></canvas>
+      </div>
+    </div>
+
+    <div class="container">
+      <h2>Model Legend</h2>
+      <ul id="model-legend"></ul>
+    </div>
+
+    <div class="container">
+      <h2>Top 3 Models per Benchmark</h2>
+      <div id="top-models-container"></div>
+    </div>
+
+    <script>
+      // Ensure results and models are loaded from results.js
+      if (typeof results === "undefined" || typeof models === "undefined") {
+        console.error(
+          "Error: results.js not loaded or 'results'/'models' variables are not defined.",
+        );
+        // Display an error message to the user
+        document.body.innerHTML =
+          '<h1 style="color:red; text-align:center;">Error: Benchmark data (results.js) not found.</h1>';
+      } else {
+        const benchmarkConfig = {
+          aider_polyglot: {
+            friendlyName: "Aider polyglot coding leaderboard",
+            metric: "percent_correct",
+            normalize: score => score, // Already 0-100
+          },
+          kcores_llm_arena: {
+            friendlyName: "KCORES LLM Arena",
+            metric: "normalized_score",
+            normalize: score => (score / 400) * 100,
+          },
+        };
+
+        const modelColors = {};
+        const colorPalette = [
+          "#1f77b4",
+          "#ff7f0e",
+          "#2ca02c",
+          "#d62728",
+          "#9467bd",
+          "#8c564b",
+          "#e377c2",
+          "#7f7f7f",
+          "#bcbd22",
+          "#17becf",
+          "#aec7e8",
+          "#ffbb78",
+          "#98df8a",
+          "#ff9896",
+          "#c5b0d5",
+          "#c49c94",
+          "#f7b6d2",
+          "#c7c7c7",
+          "#dbdb8d",
+          "#9edae5",
+        ];
+
+        models.forEach((modelName, index) => {
+          modelColors[modelName] = colorPalette[index % colorPalette.length];
+        });
+
+        const benchmarkFriendlyNames = Object.values(benchmarkConfig).map(b => b.friendlyName);
+        const chartDatasets = [];
+        const processedDataByBenchmark = {};
+
+        benchmarkFriendlyNames.forEach(name => {
+          processedDataByBenchmark[name] = [];
+        });
+
+        models.forEach(modelName => {
+          const modelData = results[modelName];
+          if (!modelData) return; // Skip if model has no data in results
+
+          const scoresForChart = [];
+          let modelHasData = false;
+
+          Object.keys(benchmarkConfig).forEach(benchmarkKey => {
+            const config = benchmarkConfig[benchmarkKey];
+            if (
+              modelData[benchmarkKey] &&
+              typeof modelData[benchmarkKey][config.metric] !== "undefined"
+            ) {
+              const rawScore = modelData[benchmarkKey][config.metric];
+              const normalizedScore = config.normalize(rawScore);
+              scoresForChart.push(normalizedScore);
+              processedDataByBenchmark[config.friendlyName].push({
+                model: modelName,
+                score: normalizedScore,
+              });
+              modelHasData = true;
+            } else {
+              scoresForChart.push(null); // Use null for missing data points
+            }
+          });
+
+          if (modelHasData) {
+            chartDatasets.push({
+              label: modelName,
+              data: scoresForChart,
+              backgroundColor: modelColors[modelName],
+              borderColor: modelColors[modelName],
+              borderWidth: 1,
+              barPercentage: 0.7, // Adjust bar width
+              categoryPercentage: 0.8, // Adjust space between groups
+            });
+          }
+        });
+
+        // Create Chart
+        const ctx = document.getElementById("benchmarkChart").getContext("2d");
+        const benchmarkChart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: benchmarkFriendlyNames,
+            datasets: chartDatasets,
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+                title: {
+                  display: true,
+                  text: "Normalized Score (0-100)",
+                  font: {size: 14},
+                },
+                ticks: {
+                  callback: function (value) {
+                    return value + "%";
+                  },
+                },
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: "Benchmarks",
+                  font: {size: 14},
+                },
+                ticks: {
+                  autoSkip: false,
+                  maxRotation: 20,
+                  minRotation: 0,
+                },
+              },
+            },
+            plugins: {
+              legend: {
+                display: false, // Using custom HTML legend
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    let label = context.dataset.label || "";
+                    if (label) {
+                      label += ": ";
+                    }
+                    if (context.parsed.y !== null) {
+                      label += context.parsed.y.toFixed(2) + "%";
+                    } else {
+                      label += "N/A";
+                    }
+                    return label;
+                  },
+                },
+              },
+            },
+            interaction: {
+              mode: "index", // Show tooltips for all datasets at the same index
+              intersect: false,
+            },
+          },
+        });
+
+        // Populate Custom Legend
+        const legendList = document.getElementById("model-legend");
+        chartDatasets.forEach(dataset => {
+          // Iterate over datasets actually plotted
+          const modelName = dataset.label;
+          const listItem = document.createElement("li");
+          listItem.innerHTML = `
+                    <span class="legend-color-box" style="background-color:${modelColors[modelName]};"></span>
+                    ${modelName}
+                `;
+          legendList.appendChild(listItem);
+        });
+
+        // Populate Top 3 Models
+        const topModelsContainer = document.getElementById("top-models-container");
+        Object.keys(processedDataByBenchmark).forEach(benchmarkFriendlyName => {
+          const benchmarkScores = processedDataByBenchmark[benchmarkFriendlyName];
+
+          if (benchmarkScores.length > 0) {
+            benchmarkScores.sort((a, b) => b.score - a.score); // Sort descending
+
+            const benchmarkDiv = document.createElement("div");
+            benchmarkDiv.classList.add("benchmark-top3");
+            benchmarkDiv.innerHTML = `<h3>${benchmarkFriendlyName}</h3>`;
+
+            const topList = document.createElement("ol");
+            for (let i = 0; i < Math.min(3, benchmarkScores.length); i++) {
+              const entry = benchmarkScores[i];
+              if (entry.score === null || typeof entry.score === "undefined") continue;
+
+              const listItem = document.createElement("li");
+              const rankClass = `rank-${i + 1}`;
+              listItem.innerHTML = `
+                            <span class="model-name" style="color: ${modelColors[entry.model]}">${
+                entry.model
+              }</span>: ${entry.score.toFixed(2)}%
+                            <span class="rank-badge ${rankClass}">Rank ${i + 1}</span>
+                        `;
+              topList.appendChild(listItem);
+            }
+            benchmarkDiv.appendChild(topList);
+            topModelsContainer.appendChild(benchmarkDiv);
+          } else {
+            const benchmarkDiv = document.createElement("div");
+            benchmarkDiv.classList.add("benchmark-top3");
+            benchmarkDiv.innerHTML = `<h3>${benchmarkFriendlyName}</h3><p>No data available for this benchmark.</p>`;
+            topModelsContainer.appendChild(benchmarkDiv);
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
