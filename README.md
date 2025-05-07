@@ -92,6 +92,14 @@ Gemini 2.5 Pro Preview 05-06 generated a visualization that is very similar to t
 
 Source code: [gemini-2.5-pro-preview-05-06.html](output/gemini-2.5-pro-preview-05-06.html)
 
+### Mistral Medium 3
+
+Mistral Medium 3 generated a typical bar chart visualization.
+
+![mistral-medium-3](output/mistral-medium-3.png)
+
+Source code: [mistral-medium-3.html](output/mistral-medium-3.html)
+
 ## Evaluation Results
 
 Evaluations are carried out using [16x Eval](https://eval.16x.engineer/). Here is the screenshot:
