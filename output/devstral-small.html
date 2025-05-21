@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Model Benchmark Results</title>
+    <script src="results.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      canvas {
+        max-width: 100%;
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <div id="chart-container">
+      <canvas id="benchmarkChart"></canvas>
+    </div>
+    <script>
+      const normalizedResults = models.map(model => {
+        let aiderPolyglotScore = results[model].aider_polyglot.percent_correct;
+        let kcoresArenaScore = results[model].kcores_llm_arena
+          ? results[model].kcores_llm_arena.normalized_score / 4
+          : 0;
+        return {
+          model,
+          aiderPolyglotScore,
+          kcoresArenaScore,
+        };
+      });
+
+      const ctx = document.getElementById("benchmarkChart").getContext("2d");
+      const benchmarkChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: ["Aider polyglot coding leaderboard", "KCORES LLM Arena"],
+          datasets: normalizedResults.map((result, index) => ({
+            label: result.model,
+            data: [result.aiderPolyglotScore, result.kcoresArenaScore],
+            backgroundColor: `hsl(${(index * 360) / normalizedResults.length}, 100%, 50%)`,
+          })),
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+            },
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: "top",
+            },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  let label = context.dataset.label || "";
+                  if (label) {
+                    label += ": ";
+                  }
+                  if (context.parsed.y !== null) {
+                    label += Math.round(context.parsed.y * 100) / 100;
+                  }
+                  return label;
+                },
+              },
+            },
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

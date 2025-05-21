@@ -100,6 +100,14 @@ Mistral Medium 3 generated a typical bar chart visualization.
 
 Source code: [mistral-medium-3.html](output/mistral-medium-3.html)
 
+### Devstral Small
+
+Devstral Small generated a visualization that is surprisingly good considering its small model size.
+
+![devstral-small](output/devstral-small.png)
+
+Source code: [devstral-small.html](output/devstral-small.html)
+
 ## Evaluation Results
 
 Evaluations are carried out using [16x Eval](https://eval.16x.engineer/). Here is the screenshot:
