@@ -4,7 +4,7 @@ A project by [16x Eval](https://eval.16x.engineer/) to evaluate different models
 
 ## Results
 
-### 🥇 GPT-4.1 & Claude 4 Opus
+### 🥇 GPT-4.1 & Claude 4 Opus & Claude Sonnet 4
 
 GPT-4.1 generated the best looking visualization, with clear labels on the bar chart and legend:
 
@@ -17,6 +17,12 @@ Claude 4 Opus generated a great looking visualization, with side-by-side compari
 ![claude-4-opus](output/claude-opus-4.png)
 
 Source code: [claude-opus-4.html](output/claude-opus-4.html)
+
+Claude Sonnet 4 generated a visualization that is very similar to Claude 4 Opus:
+
+![claude-sonnet-4](output/claude-sonnet-4.png)
+
+Source code: [claude-sonnet-4.html](output/claude-sonnet-4.html)
 
 ### 🥈 o3
 
