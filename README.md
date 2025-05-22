@@ -4,13 +4,19 @@ A project by [16x Eval](https://eval.16x.engineer/) to evaluate different models
 
 ## Results
 
-### 🥇 GPT-4.1
+### 🥇 GPT-4.1 & Claude 4 Opus
 
 GPT-4.1 generated the best looking visualization, with clear labels on the bar chart and legend:
 
 ![GPT-4.1](output/gpt-4.1.png)
 
 Source code: [gpt-4.1.html](output/gpt-4.1.html)
+
+Claude 4 Opus generated a great looking visualization, with side-by-side comparison and a legend. But it lacked color-coding for the models and labels on the bar chart:
+
+![claude-4-opus](output/claude-opus-4.png)
+
+Source code: [claude-opus-4.html](output/claude-opus-4.html)
 
 ### 🥈 o3
 
