@@ -120,6 +120,14 @@ Devstral Small generated a visualization that is surprisingly good considering i
 
 Source code: [devstral-small.html](output/devstral-small.html)
 
+### DeepSeek R1-0528-Qwen3-8B
+
+DeepSeek R1-0528-Qwen3-8B did not manage to generate a runnable visualization. The code contains bugs that are not easy to fix.
+
+On second attempt, the model just generated a json file instead of an HTML file. There were some HTML code in the thinking process, but the final output was just a json file.
+
+Source code: [deepseek-r1-0528-qwen3-8b.html](output/deepseek-r1-0528-qwen3-8b.html)
+
 ## Evaluation Results
 
 Evaluations are carried out using [16x Eval](https://eval.16x.engineer/). Here is the screenshot:

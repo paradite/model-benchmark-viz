@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Model Benchmark Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="results.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f5f5f5;
+      }
+      h1 {
+        text-align: center;
+        color: #333;
+      }
+      .chart-container {
+        width: 90%;
+        max-width: 1200px;
+        margin: auto;
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .benchmark-section {
+        margin-bottom: 40px;
+        position: relative;
+      }
+      .controls {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      select {
+        padding: 8px;
+        border-radius: 4px;
+        margin-right: 10px;
+      }
+      .label {
+        position: absolute;
+        padding: 8px;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        font-size: 12px;
+        white-space: nowrap;
+        pointer-events: none;
+        transform: translate(-50%, -100%);
+      }
+      .bar-label {
+        position: absolute;
+        padding: 2px 5px;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        font-size: 10px;
+        white-space: nowrap;
+        pointer-events: none;
+        transform: translate(-50%, -100%);
+      }
+      canvas {
+        width: 100% !important;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <div class="controls">
+      <select id="benchmarkSelect">
+        <option value="both">Both Benchmarks</option>
+        <option value="aider">Aider polyglot coding leaderboard</option>
+        <option value="arena">KCORES LLM Arena</option>
+      </select>
+    </div>
+    <div id="charts"></div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // Data collection and normalization
+        const models = Object.keys(results).sort();
+        const benchmarkFriendlyNames = {
+          aider_polyglot: "Aider polyglot coding leaderboard",
+          kcores_llm_arena: "KCORES LLM Arena",
+        };
+
+        // Color mapping for models - need to make these consistent
+        // First pass through results to create a list of models used in benchmarks
+        const modelColorMap = {};
+        const modelsUsed = new Set();
+
+        // Initial pass to populate the modelColorMap with colors
+        const colorPalette = [
+          "rgba(255, 99, 132, 0.7)",
+          "rgba(54, 162, 235, 0.7)",
+          "rgba(255, 206, 86, 0.7)",
+          "rgba(75, 192, 192, 0.7)",
+          "rgba(153, 102, 255, 0.7)",
+          "rgba(255, 159, 64, 0.7)",
+          "rgba(199, 199, 199, 0.7)",
+          "rgba(83, 102, 255, 0.7)",
+          "rgba(40, 159, 64, 0.7)",
+          "rgba(210, 199, 199, 0.7)",
+          "rgba(165, 42, 42, 0.7)",
+          "rgba(241, 196, 15, 0.7)",
+          "rgba(138, 43, 226, 0.7)",
+        ];
+
+        // First, get all models used and assign colors
+        for (const model of models) {
+          for (const benchmark in results[model]) {
+            if (!modelColorMap[model]) {
+              modelColorMap[model] = colorPalette[modelNames.length % colorPalette.length];
+            }
+          }
+        }
+
+        // Create a lookup for scores
+        const scoreData = {
+          aider_polyglot: [],
+          kcores_llm_arena: [],
+        };
+
+        // Populate scoreData with normalized values
+        for (const model of models) {
+          if (
+            results[model].hasOwnProperty("aider_polyglot") &&
+            results[model]["aider_polyglot"].hasOwnProperty("percent_correct")
+          ) {
+            scoreData.aider_polyglot.push({
+              model: model,
+              benchmark: "aider",
+              score: results[model]["aider_polyglot"]["percent_correct"],
+            });
+          } else {
+            scoreData.aider_polyglot.push({
+              model: model,
+              benchmark: "aider",
+              score: null,
+            });
+          }
+
+          if (
+            results[model].hasOwnProperty("kcores_llm_arena") &&
+            results[model]["kcores_llm_arena"].hasOwnProperty("normalized_score")
+          ) {
+            const normalizedScore =
+              (results[model]["kcores_llm_arena"]["normalized_score"] / 400) * 100;
+            scoreData.kcores_llm_arena.push({
+              model: model,
+              benchmark: "arena",
+              score: normalizedScore,
+            });
+          } else {
+            scoreData.kcores_llm_arena.push({
+              model: model,
+              benchmark: "arena",
+              score: null,
+            });
+          }
+        }
+
+        // Count missing data to check if single benchmark chart needed
+        let aiderComplete = scoreData.aider_polyglot.every(item => item.score !== null);
+        let arenaComplete = scoreData.kcores_llm_arena.every(item => item.score !== null);
+
+        // Create datasets for the chart
+        const datasets = {};
+
+        // Initialize datasets if benchmarks exist
+        if (!aiderComplete || document.getElementById("benchmarkSelect").value !== "arena") {
+          datasets.aider = {
+            label: benchmarkFriendlyNames["aider_polyglot"],
+            data: scoreData.aider_polyglot.map(item => ({
+              x: item.score !== null ? item.score : null,
+              model: item.model,
+            })),
+            borderColor: colorPalette[0],
+            backgroundColor: colorPalette[0].replace("0.7", "0.1"),
+            pointRadius: 0,
+            pointHoverRadius: 6,
+            hidden: document.getElementById("benchmarkSelect").value === "arena",
+          };
+        }
+
+        if (!arenaComplete || document.getElementById("benchmarkSelect").value !== "aider") {
+          datasets.arena = {
+            label: benchmarkFriendlyNames["kcores_llm_arena"],
+            data: scoreData.kcores_llm_arena.map(item => ({
+              x: item.score !== null ? item.score : null,
+              model: item.model,
+            })),
+            borderColor: colorPalette[1],
+            backgroundColor: colorPalette[1].replace("0.7", "0.1"),
+            pointRadius: 0,
+            pointHoverRadius: 6,
+            hidden: document.getElementById("benchmarkSelect").value === "aider",
+          };
+        }
+
+        // Render charts based on selection
+        renderCharts();
+
+        // Benchmark selection change handler
+        document.getElementById("benchmarkSelect").addEventListener("change", function () {
+          renderCharts();
+        });
+
+        // Function to render charts
+        function renderCharts() {
+          const benchmarkSelect = document.getElementById("benchmarkSelect").value;
+          const chartsContainer = document.getElementById("charts");
+          chartsContainer.innerHTML = "";
+
+          let currentDatasets = {};
+          let chartTitle = "Model Benchmark Results";
+
+          // Set which datasets to show
+          currentDatasets.aider =
+            (benchmarkSelect !== "arena" && !aiderComplete) || benchmarkSelect !== "aider";
+          currentDatasets.arena =
+            (benchmarkSelect !== "aider" && !arenaComplete) || benchmarkSelect !== "arena";
+
+          // Update chart titles if only one benchmark is chosen
+          if (benchmarkSelect !== "both") {
+            chartTitle =
+              benchmarkFriendlyNames[
+                benchmarkSelect === "aider" ? "aider_polyglot" : "kcores_llm_arena"
+              ];
+          }
+
+          if (!currentDatasets.aider && !currentDatasets.arena) {
+            chartsContainer.innerHTML = "<p>No data available for selected benchmark.</p>";
+            return;
+          }
+
+          // Create chart
+          const chart = new Chart("canvas", {
+            type: "bar",
+            data: {
+              labels: [...models].slice(0, 100), // Limit long lists to 100 for display
+              datasets: [
+                ...(currentDatasets.aider ? [datasets.aider] : []),
+                ...(currentDatasets.arena ? [datasets.arena] : []),
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                title: {
+                  display: true,
+                  text: chartTitle,
+                  font: {
+                    size: 18,
+                  },
+                },
+                legend: {
+                  position: "top",
+                },
+                tooltip: {
+                  mode: "index",
+                  callbacks: {
+                    label: function (context) {
+                      const label = context.dataset.label || "";
+                      if (label) {
+                        return `${label}: ${
+                          context.parsed.x !== null && !isNaN(context.parsed.x)
+                            ? context.parsed.x.toFixed(1)
+                            : "-"
+                        }%`;
+                      }
+                      return "";
+                    },
+                  },
+                },
+                datalabels: {
+                  anchor: "end",
+                  align: "top",
+                  formatter: function (value, context) {
+                    if (value !== null && !isNaN(value)) {
+                      return value.toFixed(1) + "%";
+                    }
+                    return "";
+                  },
+                  font: function (context) {
+                    const isTop3 =
+                      context.dataset.data[context.dataIndex] !== null &&
+                      scoreData[benchmarkSelect === "aider" ? "aider_polyglot" : "kcores_llm_arena"]
+                        .slice()
+                        .filter(item => item.score !== null)
+                        .sort((a, b) => b.score - a.score)
+                        .some(item => item.model === context.dataset.data[context.dataIndex].model);
+
+                    return {
+                      size: isTop3 ? 12 : 10,
+                      weight: isTop3 ? "bold" : "normal",
+                    };
+                  },
+                  color: function (context) {
+                    const isTop3 =
+                      context.dataset.data[context.dataIndex] !== null &&
+                      scoreData[benchmarkSelect === "aider" ? "aider_polyglot" : "kcores_llm_arena"]
+                        .slice()
+                        .filter(item => item.score !== null)
+                        .sort((a, b) => b.score - a.score)
+                        .some(item => item.model === context.dataset.data[context.dataIndex].model);
+
+                    return isTop3 ? "black" : context.dataset.borderColor;
+                  },
+                },
+              },
+              scales: {
+                x: {
+                  type: "linear",
+                  beginAtZero: true,
+                  max:
+                    benchmarkSelect === "arena"
+                      ? 100
+                      : scoreData.aider_polyglot.reduce(
+                          (max, item) =>
+                            Math.max(max, item.score !== null ? item.score : -Infinity),
+                          -Infinity,
+                        ),
+                  title: {
+                    display: true,
+                    text: "Normalized Score (0-100)",
+                    font: {
+                      size: 14,
+                    },
+                  },
+                },
+                y: {
+                  title: {
+                    display: true,
+                    text: "Model",
+                    font: {
+                      size: 14,
+                    },
+                  },
+                  ticks: {
+                    maxRotation: 45,
+                    minRotation: 45,
+                  },
+                },
+              },
+            },
+            plugins: [
+              {
+                id: "model-labels",
+                beforeDraw: chart => {
+                  const meta = chart.getDatasetMeta(0);
+                  meta.data.forEach((element, index) => {
+                    if (element.parsed.x !== null && !isNaN(element.parsed.x)) {
+                      const modelLabel = document.createElement("div");
+                      modelLabel.className = "label";
+                      modelLabel.textContent = chart.data.labels[index];
+                      modelLabel.style.left = `${element.x}px`;
+                      modelLabel.style.top = `${element.y - 5}px`;
+                      document.querySelector("#charts").appendChild(modelLabel);
+                    }
+                  });
+
+                  // Add top model labels for the specific benchmark
+                  const benchmarkId =
+                    benchmarkSelect === "aider" ? "aider_polyglot" : "kcores_llm_arena";
+                  const topModels = scoreData[benchmarkId]
+                    .filter(item => item.score !== null)
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 3);
+
+                  topModels.forEach((item, index) => {
+                    if (
+                      !scoreData[benchmarkId].find(
+                        itemMatch => itemMatch.model === item.model && itemMatch.score !== null,
+                      )
+                    )
+                      return;
+
+                    const elementIndex = scoreData[benchmarkId].findIndex(
+                      itemMatch => itemMatch.model === item.model,
+                    );
+                    if (elementIndex !== -1 && index < 3) {
+                      const element = chart.data.datasets[0].data[elementIndex];
+
+                      const topLabel = document.createElement("div");
+                      topLabel.className = "bar-label";
+                      topLabel.textContent = `#${index + 1}: Model: ${
+                        item.model.split(" ")[0]
+                      }, Score: ${item.score.toFixed(1)}%`;
+                      topLabel.style.left = `${element.x}px`;
+                      topLabel.style.top = `${element.y - 40}px`;
+                      topLabel.style.width = "150px";
+                      topLabel.style.backgroundColor = "rgba(255, 255, 255, 0.3)";
+                      topLabel.style.padding = "5px";
+                      document.querySelector("#charts").appendChild(topLabel);
+                    }
+                  });
+                },
+              },
+            ],
+          });
+
+          function createCanvas() {
+            const canvas = document.createElement("canvas");
+            canvas.width = 400;
+            canvas.height = 400;
+            canvas.id = "canvas";
+            chartsContainer.appendChild(canvas);
+            return canvas;
+          }
+
+          if (!document.getElementById("canvas")) {
+            chartsContainer.appendChild(createCanvas());
+          }
+
+          if (chart) {
+            chart.update();
+          }
+        }
+      });
+    </script>
+  </body>
+</html>
