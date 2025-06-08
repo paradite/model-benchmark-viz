@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Model Benchmark Results</title>
+
+    <!-- External Libraries from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+    <!-- Benchmark Data -->
+    <script src="results.js"></script>
+
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+          sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+        background-color: #f8f9fa;
+        color: #212529;
+        padding: 1rem 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      h1 {
+        color: #343a40;
+        text-align: center;
+        margin-bottom: 0;
+      }
+      #chart-container {
+        position: relative;
+        width: 100%;
+        max-width: 1200px;
+        margin: 2rem auto;
+        background-color: #ffffff;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+
+    <div id="chart-container">
+      <canvas id="benchmarkChart"></canvas>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // 1. Define benchmark configurations and model colors
+        const BENCHMARK_MAP = {
+          aider_polyglot: {
+            friendlyName: "Aider polyglot coding leaderboard",
+            metric: "percent_correct",
+            normalize: score => score, // Already a 0-100 score
+          },
+          kcores_llm_arena: {
+            friendlyName: "KCORES LLM Arena",
+            metric: "normalized_score",
+            normalize: score => (score / 400) * 100, // Normalize from a max of 400 to 100
+          },
+        };
+
+        const MODEL_COLORS = {
+          "o3 (high)": "#1f77b4",
+          "o4-mini (high)": "#ff7f0e",
+          "GPT-4.1": "#2ca02c",
+          "Claude 3.5 Sonnet": "#d62728",
+          "Claude 3.7 Sonnet (Thinking)": "#9467bd",
+          "Gemini 2.5 Pro": "#8c564b",
+          "DeepSeek R1": "#e377c2",
+          "DeepSeek V3 (0324)": "#7f7f7f",
+          "Grok 3 Beta": "#bcbd22",
+          default: "#cccccc",
+        };
+
+        // 2. Process raw data into a format suitable for Chart.js
+        const benchmarkKeys = Object.keys(BENCHMARK_MAP);
+        const chartLabels = benchmarkKeys.map(key => BENCHMARK_MAP[key].friendlyName);
+        const modelNames = Object.keys(results);
+
+        const chartDatasets = modelNames.map(modelName => {
+          const data = benchmarkKeys.map(benchmarkKey => {
+            const benchmarkData = results[modelName]?.[benchmarkKey];
+            if (benchmarkData) {
+              const rawScore = benchmarkData[BENCHMARK_MAP[benchmarkKey].metric];
+              return BENCHMARK_MAP[benchmarkKey].normalize(rawScore);
+            }
+            return null; // Return null if a model has no data for a benchmark
+          });
+
+          return {
+            label: modelName,
+            data: data,
+            backgroundColor: MODEL_COLORS[modelName] || MODEL_COLORS["default"],
+          };
+        });
+
+        // 3. Calculate rankings for each benchmark to identify the top 3
+        const benchmarkRanks = {};
+        chartLabels.forEach((label, index) => {
+          const scoresForBenchmark = chartDatasets
+            .map(dataset => ({
+              model: dataset.label,
+              score: dataset.data[index],
+            }))
+            .filter(item => item.score !== null && item.score !== undefined)
+            .sort((a, b) => b.score - a.score);
+
+          benchmarkRanks[index] = scoresForBenchmark;
+        });
+
+        // 4. Configure and create the chart
+        const ctx = document.getElementById("benchmarkChart").getContext("2d");
+
+        // Register the datalabels plugin globally
+        Chart.register(ChartDataLabels);
+
+        new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: chartLabels,
+            datasets: chartDatasets,
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+                title: {
+                  display: true,
+                  text: "Normalized Score (0-100)",
+                  font: {size: 14},
+                },
+              },
+              x: {
+                ticks: {
+                  autoSkip: false,
+                  maxRotation: 15,
+                  minRotation: 0,
+                },
+              },
+            },
+            plugins: {
+              title: {
+                display: true,
+                text: "Model Performance Comparison Across Benchmarks",
+                font: {size: 18, weight: "bold"},
+                padding: {top: 10, bottom: 20},
+              },
+              legend: {
+                position: "bottom",
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    let label = context.dataset.label || "";
+                    if (label) {
+                      label += ": ";
+                    }
+                    if (context.parsed.y !== null) {
+                      label += context.parsed.y.toFixed(1);
+                    }
+                    return label;
+                  },
+                },
+              },
+              datalabels: {
+                color: "#333",
+                anchor: "end",
+                align: "end",
+                offset: -4,
+                font: {
+                  weight: "bold",
+                },
+                formatter: (value, context) => {
+                  const benchmarkIndex = context.dataIndex;
+                  const modelName = context.dataset.label;
+
+                  const ranks = benchmarkRanks[benchmarkIndex];
+                  const modelRankIndex = ranks.findIndex(r => r.model === modelName);
+
+                  // Display a label only for the top 3, using medal icons
+                  if (modelRankIndex !== -1 && modelRankIndex < 3) {
+                    const rankIcons = ["🥇", "🥈", "🥉"];
+                    return `${rankIcons[modelRankIndex]} ${value.toFixed(1)}`;
+                  }
+
+                  return null; // Hide labels for all other models
+                },
+              },
+            },
+          },
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -24,13 +24,19 @@ Claude Sonnet 4 generated a visualization that is very similar to Claude 4 Opus:
 
 Source code: [claude-sonnet-4.html](output/claude-sonnet-4.html)
 
-### 🥈 o3
+### 🥈 o3 & Gemini 2.5 Pro Preview (06-05)
 
 o3 generated the second best visualization, with clear labels on the bar chart:
 
 ![o3](output/o3.png)
 
 Source code: [o3.html](output/o3.html)
+
+The Gemini 2.5 Pro Preview [06-05] generated a visualization that is similar to o3, but with better labels on the bar chart:
+
+![gemini-2.5-pro-preview-06-05](output/gemini-2.5-pro-preview-06-05.png)
+
+Source code: [gemini-2.5-pro-preview-06-05.html](output/gemini-2.5-pro-preview-06-05.html)
 
 ### 🥉 Claude 3.7
 
