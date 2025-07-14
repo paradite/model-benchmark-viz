@@ -4,13 +4,15 @@ A project by [16x Eval](https://eval.16x.engineer/) to evaluate different models
 
 ## Results
 
-### 🥇 GPT-4.1 & Claude 4 Opus & Claude Sonnet 4
+### GPT-4.1
 
-GPT-4.1 generated the best looking visualization, with clear labels on the bar chart and legend:
+GPT-4.1 generated a visualization with clear labels on the bar chart and legend:
 
 ![GPT-4.1](output/gpt-4.1.png)
 
 Source code: [gpt-4.1.html](output/gpt-4.1.html)
+
+### Claude 4 Opus & Claude Sonnet 4
 
 Claude 4 Opus generated a great looking visualization, with side-by-side comparison and a legend. But it lacked color-coding for the models and labels on the bar chart:
 
@@ -24,13 +26,15 @@ Claude Sonnet 4 generated a visualization that is very similar to Claude 4 Opus:
 
 Source code: [claude-sonnet-4.html](output/claude-sonnet-4.html)
 
-### 🥈 o3 & Gemini 2.5 Pro Preview (06-05)
+### o3
 
-o3 generated the second best visualization, with clear labels on the bar chart:
+o3 generated a visualization, with clear labels on the bar chart:
 
 ![o3](output/o3.png)
 
 Source code: [o3.html](output/o3.html)
+
+### Gemini 2.5 Pro Preview (06-05)
 
 The Gemini 2.5 Pro Preview [06-05] generated a visualization that is similar to o3, but with better labels on the bar chart:
 
@@ -38,11 +42,9 @@ The Gemini 2.5 Pro Preview [06-05] generated a visualization that is similar to 
 
 Source code: [gemini-2.5-pro-preview-06-05.html](output/gemini-2.5-pro-preview-06-05.html)
 
-### 🥉 Claude 3.7
+### Claude 3.7
 
-Claude 3.7 generated the third best visualization.
-
-It uses scatter plots to compare the results of the models which is a big plus. However it has some formatting issues so the output doesn't look as good as the other visualizations:
+Claude 3.7 generated scatter plots to compare the results of the models which is a big plus. However it has some formatting issues so the output doesn't look as good as the other visualizations:
 
 ![claude-3.7](output/claude-3.7.png)
 
@@ -54,7 +56,7 @@ I also ran Claude 3.7 again with the same prompt, but it produced a bar chart vi
 
 Source code: [claude-3.7-2.html](output/claude-3.7-2.html)
 
-### 4th place: Gemini 2.5 Pro Experimental and DeepSeek V3
+### Gemini 2.5 Pro Experimental
 
 Gemini 2.5 Pro Experimental, despite being ranked as the top model, produced a visualization that is not as good as the other models, with no labels on the bar chart.
 
@@ -63,6 +65,8 @@ Gemini 2.5 Pro Experimental, despite being ranked as the top model, produced a v
 Source code: [gemini-2.5-pro-exp.html](output/gemini-2.5-pro-exp.html)
 
 Re-running the prompt again with Gemini 2.5 Pro Experimental did not produce a better visualization.
+
+### DeepSeek V3
 
 DeepSeek V3 generated a similar visualization to Gemini 2.5 Pro.
 
