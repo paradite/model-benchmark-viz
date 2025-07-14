@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Model Benchmark Results</title>
+    <script src="results.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+      #chart {
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+      #legend {
+        max-width: 1000px;
+        margin: 20px auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <canvas
+      id="chart"
+      width="1000"
+      height="500"
+    ></canvas>
+    <div id="legend"></div>
+    <script>
+      // Data from results.js
+      const benchmarkNames = {
+        aider_polyglot: "Aider polyglot coding leaderboard",
+        kcores_llm_arena: "KCORES LLM Arena",
+      };
+
+      const colors = [
+        "#FF6384",
+        "#36A2EB",
+        "#FFCE56",
+        "#4BC0C0",
+        "#9966FF",
+        "#FF9F40",
+        "#E7E9ED",
+        "#C0C0C0",
+        "#808080",
+      ];
+
+      const modelColors = {};
+      models.forEach((m, i) => {
+        modelColors[m] = colors[i];
+      });
+
+      // Collect scores
+      const aiderScores = {};
+      const kcoresScores = {};
+      for (let m of models) {
+        if (results[m].aider_polyglot) {
+          aiderScores[m] = results[m].aider_polyglot.percent_correct;
+        }
+        if (results[m].kcores_llm_arena) {
+          kcoresScores[m] = results[m].kcores_llm_arena.normalized_score / 4;
+        }
+      }
+
+      // Sort models by aider score descending
+      const sortedModels = [...models].sort((a, b) => aiderScores[b] - aiderScores[a]);
+
+      // Get top 3 for each
+      function getTop3(scores) {
+        return Object.entries(scores)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([model, score], idx) => ({model, score, rank: idx + 1}));
+      }
+      const aiderTop3 = getTop3(aiderScores);
+      const kcoresTop3 = getTop3(kcoresScores);
+
+      // Datasets
+      const datasets = [
+        {
+          label: benchmarkNames.aider_polyglot,
+          data: sortedModels.map(m => aiderScores[m]),
+          backgroundColor: sortedModels.map(m => modelColors[m]),
+          borderWidth: 1,
+        },
+        {
+          label: benchmarkNames.kcores_llm_arena,
+          data: sortedModels.map(m => kcoresScores[m] ?? undefined),
+          backgroundColor: sortedModels.map(m => modelColors[m]),
+          borderWidth: 1,
+        },
+      ];
+
+      // Create chart
+      const ctx = document.getElementById("chart").getContext("2d");
+      const chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: sortedModels,
+          datasets: datasets,
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {
+                display: true,
+                text: "Normalized Score (0-100)",
+              },
+            },
+            x: {
+              title: {
+                display: true,
+                text: "Models (sorted by Aider score descending)",
+              },
+              ticks: {
+                autoSkip: false,
+                maxRotation: 90,
+                minRotation: 90,
+              },
+            },
+          },
+          plugins: {
+            legend: {
+              display: false,
+            },
+            datalabels: {
+              color: "black",
+              anchor: "end",
+              align: "end",
+              offset: 4,
+              font: {
+                weight: "bold",
+              },
+              formatter: (value, context) => {
+                if (!value) return "";
+                const benchmark = context.dataset.label;
+                const model = context.chart.data.labels[context.dataIndex];
+                let top3;
+                if (benchmark === benchmarkNames.aider_polyglot) {
+                  top3 = aiderTop3;
+                } else {
+                  top3 = kcoresTop3;
+                }
+                const rankEntry = top3.find(e => e.model === model);
+                if (rankEntry) {
+                  return `${rankEntry.rank}`;
+                } else {
+                  return "";
+                }
+              },
+            },
+          },
+        },
+        plugins: [ChartDataLabels],
+      });
+
+      // Custom legend
+      const legendElm = document.getElementById("legend");
+      legendElm.style.display = "flex";
+      legendElm.style.flexWrap = "wrap";
+      legendElm.style.justifyContent = "center";
+      sortedModels.forEach(m => {
+        const div = document.createElement("div");
+        div.style.margin = "10px";
+        div.innerHTML = `<span style="display:inline-block;width:20px;height:20px;background-color:${modelColors[m]};margin-right:5px;"></span>${m}`;
+        legendElm.appendChild(div);
+      });
+    </script>
+  </body>
+</html>
