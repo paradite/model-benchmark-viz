@@ -34,6 +34,14 @@ Claude Sonnet 4 generated a visualization that is very similar to Claude 4 Opus:
 
 Source code: [claude-sonnet-4.html](output/claude-sonnet-4.html)
 
+### Gemini 2.5 Pro (GA version)
+
+> Human rating: 8.5/10
+
+Gemini 2.5 Pro (GA version) generated a visualization that is great looking with clear labels on the bar chart.
+
+![gemini-2.5-pro-ga](output/gemini-2.5-pro-ga.png)
+
 ### o3
 
 > Human rating: 8/10
