@@ -71,9 +71,9 @@ Kimi K2 generated a side-by-side visualization without labels on the bar chart.
 
 Although the bars are colored by model instead of by benchmark, different benchmarks have different alpha intensity, which is a nice touch.
 
-![kimi-k2](output/kimi-k2.png)
+![kimi-k2](output/kimi-k2-0711-preview.png)
 
-Source code: [kimi-k2.html](output/kimi-k2.html)
+Source code: [kimi-k2-0711-preview.html](output/kimi-k2-0711-preview.html)
 
 ### o3
 
