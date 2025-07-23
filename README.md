@@ -2,7 +2,7 @@
 
 A project by [16x Eval](https://eval.16x.engineer/) to evaluate different models on their ability to generate visualizations of model benchmarks for coding.
 
-For evaluation rubrics, check the [eval-data](https://github.com/paradite/eval-data) repo.
+For evaluation rubrics, check the [eval-data](https://github.com/paradite/eval-data) repo. [Direct link](https://github.com/paradite/eval-data/blob/main/projects/visualization/RUBRICS.md).
 
 ## Results
 
