@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Model Benchmark Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="results.js"></script>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        padding: 30px;
+      }
+      h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .chart-container {
+        position: relative;
+        height: 500px;
+        margin-bottom: 30px;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+        margin-top: 20px;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .legend-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 3px;
+      }
+      .top-models {
+        margin-top: 30px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+      }
+      .top-models-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+      }
+      .top-models-section h3 {
+        margin-top: 0;
+        color: #495057;
+      }
+      .top-model-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 10px 0;
+        padding: 10px;
+        background: white;
+        border-radius: 4px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      .rank-badge {
+        background: #007bff;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 14px;
+      }
+      .rank-badge.gold {
+        background: #ffd700;
+        color: #333;
+      }
+      .rank-badge.silver {
+        background: #c0c0c0;
+        color: #333;
+      }
+      .rank-badge.bronze {
+        background: #cd7f32;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Model Benchmark Results</h1>
+      <div class="chart-container">
+        <canvas id="benchmarkChart"></canvas>
+      </div>
+      <div class="top-models">
+        <div class="top-models-section">
+          <h3>Top 3 - Aider polyglot coding leaderboard</h3>
+          <div id="aiderTop3"></div>
+        </div>
+        <div class="top-models-section">
+          <h3>Top 3 - KCORES LLM Arena</h3>
+          <div id="kcoresTop3"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Model colors
+      const modelColors = {
+        "o3 (high)": "#FF6B6B",
+        "o4-mini (high)": "#4ECDC4",
+        "GPT-4.1": "#45B7D1",
+        "Claude 3.5 Sonnet": "#96CEB4",
+        "Claude 3.7 Sonnet (Thinking)": "#FECA57",
+        "Gemini 2.5 Pro": "#FF9FF3",
+        "DeepSeek R1": "#54A0FF",
+        "DeepSeek V3 (0324)": "#5F27CD",
+        "Grok 3 Beta": "#00D2D3",
+      };
+
+      // Process data
+      const benchmarkData = {
+        "Aider polyglot coding leaderboard": {},
+        "KCORES LLM Arena": {},
+      };
+
+      // Fill in the data
+      Object.entries(results).forEach(([model, benchmarks]) => {
+        if (benchmarks.aider_polyglot) {
+          benchmarkData["Aider polyglot coding leaderboard"][model] =
+            benchmarks.aider_polyglot.percent_correct;
+        }
+        if (benchmarks.kcores_llm_arena) {
+          const normalized = (benchmarks.kcores_llm_arena.normalized_score / 400) * 100;
+          benchmarkData["KCORES LLM Arena"][model] = normalized;
+        }
+      });
+
+      // Get top 3 for each benchmark
+      const getTop3 = benchmarkName => {
+        const data = benchmarkData[benchmarkName];
+        return Object.entries(data)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 3);
+      };
+
+      // Display top 3
+      const displayTop3 = (containerId, benchmarkName) => {
+        const container = document.getElementById(containerId);
+        const top3 = getTop3(benchmarkName);
+        const ranks = ["gold", "silver", "bronze"];
+
+        top3.forEach(([model, score], index) => {
+          const div = document.createElement("div");
+          div.className = "top-model-item";
+          div.innerHTML = `
+                    <div class="rank-badge ${ranks[index]}">${index + 1}</div>
+                    <div style="width: 20px; height: 20px; background: ${
+                      modelColors[model]
+                    }; border-radius: 3px;"></div>
+                    <span style="flex: 1;">${model}</span>
+                    <span style="font-weight: bold;">${score.toFixed(1)}%</span>
+                `;
+          container.appendChild(div);
+        });
+      };
+
+      displayTop3("aiderTop3", "Aider polyglot coding leaderboard");
+      displayTop3("kcoresTop3", "KCORES LLM Arena");
+
+      // Create chart
+      const ctx = document.getElementById("benchmarkChart").getContext("2d");
+
+      const allModels = [
+        ...new Set([
+          ...Object.keys(benchmarkData["Aider polyglot coding leaderboard"]),
+          ...Object.keys(benchmarkData["KCORES LLM Arena"]),
+        ]),
+      ];
+
+      const chartData = {
+        labels: allModels,
+        datasets: [
+          {
+            label: "Aider polyglot coding leaderboard",
+            data: allModels.map(
+              model => benchmarkData["Aider polyglot coding leaderboard"][model] || null,
+            ),
+            backgroundColor: allModels.map(model => modelColors[model] + "80"),
+            borderColor: allModels.map(model => modelColors[model]),
+            borderWidth: 2,
+            borderRadius: 5,
+            borderSkipped: false,
+          },
+          {
+            label: "KCORES LLM Arena",
+            data: allModels.map(model => benchmarkData["KCORES LLM Arena"][model] || null),
+            backgroundColor: allModels.map(model => modelColors[model] + "40"),
+            borderColor: allModels.map(model => modelColors[model]),
+            borderWidth: 2,
+            borderRadius: 5,
+            borderSkipped: false,
+          },
+        ],
+      };
+
+      new Chart(ctx, {
+        type: "bar",
+        data: chartData,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: {
+              display: true,
+              text: "Model Performance Comparison (Normalized 0-100)",
+              font: {
+                size: 16,
+                weight: "bold",
+              },
+            },
+            legend: {
+              display: true,
+              position: "top",
+            },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  return context.dataset.label + ": " + context.parsed.y.toFixed(1) + "%";
+                },
+              },
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {
+                display: true,
+                text: "Normalized Score (%)",
+              },
+            },
+            x: {
+              title: {
+                display: true,
+                text: "Models",
+              },
+            },
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

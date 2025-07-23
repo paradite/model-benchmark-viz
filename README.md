@@ -4,6 +4,25 @@ A project by [16x Eval](https://eval.16x.engineer/) to evaluate different models
 
 For evaluation rubrics, check the [eval-data](https://github.com/paradite/eval-data) repo. [Direct link](https://github.com/paradite/eval-data/blob/main/projects/visualization/RUBRICS.md).
 
+Rubrics is reproduced below for convenience:
+
+```
+Criteria:
+- Side-by-side visualization without label: 8.5/10
+- Baseline visualization without label: 8/10
+- Has major formatting issues: 5/10
+- Did not run / Code error: 1/10
+
+Additional components:
+- Side-by-side visualization
+  - Color by benchmark: No effect on rating
+  - Color by model: -0.5 rating
+  - Alternative ways to differentiate benchmarks: +0.5 rating
+- Clear labels on bar chart: +0.5 rating
+- Poor color choice: -0.5 rating
+- Minor formatting issues: -0.5 rating
+```
+
 ## Results
 
 ### GPT-4.1
@@ -20,7 +39,7 @@ Source code: [gpt-4.1.html](output/gpt-4.1.html)
 
 > Human rating: 8.5/10
 
-Claude 4 Opus generated a great looking visualization, with side-by-side comparison and a legend. But it lacked color-coding for the models and labels on the bar chart:
+Claude 4 Opus generated a great looking visualization, with side-by-side comparison colored by benchmark and a legend. But it lacked labels on the bar chart:
 
 ![claude-4-opus](output/claude-opus-4.png)
 
@@ -43,6 +62,18 @@ Source code: [claude-sonnet-4.html](output/claude-sonnet-4.html)
 Gemini 2.5 Pro (GA version) generated a visualization that is great looking with clear labels on the bar chart.
 
 ![gemini-2.5-pro-ga](output/gemini-2.5-pro-ga.png)
+
+### Kimi K2
+
+> Human rating: 8.5/10
+
+Kimi K2 generated a side-by-side visualization without labels on the bar chart.
+
+Although the bars are colored by model instead of by benchmark, different benchmarks have different alpha intensity, which is a nice touch.
+
+![kimi-k2](output/kimi-k2.png)
+
+Source code: [kimi-k2.html](output/kimi-k2.html)
 
 ### o3
 
