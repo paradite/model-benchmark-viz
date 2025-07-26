@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Model Benchmark Results</title>
+    <script src="results.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f9f9f9;
+      }
+      h1 {
+        text-align: center;
+        color: #333;
+      }
+      .chart-container {
+        margin-bottom: 50px;
+      }
+      .model-label {
+        font-weight: bold;
+        font-size: 14px;
+      }
+      .top-label {
+        font-size: 12px;
+        fill: #fff;
+        font-weight: bold;
+      }
+      .axis-label {
+        font-size: 16px;
+        font-weight: bold;
+      }
+      .legend {
+        font-size: 14px;
+      }
+      .legend-color-box {
+        display: inline-block;
+        width: 15px;
+        height: 15px;
+        margin-right: 5px;
+        border: 1px solid #000;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <div id="visualization"></div>
+
+    <script>
+      // Friendly names
+      const benchmarkNames = {
+        aider_polyglot: "Aider polyglot coding leaderboard",
+        kcores_llm_arena: "KCORES LLM Arena",
+      };
+
+      // Model-specific colors
+      const modelColors = {
+        "o3 (high)": "#1f77b4",
+        "o4-mini (high)": "#ff7f0e",
+        "GPT-4.1": "#2ca02c",
+        "Claude 3.5 Sonnet": "#d62728",
+        "Claude 3.7 Sonnet (Thinking)": "#9467bd",
+        "Gemini 2.5 Pro": "#8c564b",
+        "DeepSeek R1": "#e377c2",
+        "DeepSeek V3 (0324)": "#7f7f7f",
+        "Grok 3 Beta": "#bcbd22",
+      };
+
+      function normalizeScore(score, benchmark) {
+        if (benchmark === "aider_polyglot") {
+          return score; // already in 0-100
+        } else if (benchmark === "kcores_llm_arena") {
+          return (score / 400) * 100; // normalize from 0-400 to 0-100
+        }
+        return 0;
+      }
+
+      // Prepare data
+      const processedData = [];
+      const benchmarks = ["aider_polyglot", "kcores_llm_arena"];
+
+      benchmarks.forEach(benchmark => {
+        const benchmarkData = [];
+        for (const model in results) {
+          const bData = results[model][benchmark];
+          if (bData) {
+            let score;
+            if (benchmark === "aider_polyglot") {
+              score = bData.percent_correct;
+            } else if (benchmark === "kcores_llm_arena") {
+              score = bData.normalized_score;
+            }
+            if (score !== undefined) {
+              benchmarkData.push({
+                model: model,
+                score: normalizeScore(score, benchmark),
+                rawScore: score,
+              });
+            }
+          }
+        }
+
+        // Sort descending
+        benchmarkData.sort((a, b) => b.score - a.score);
+
+        // Assign top 3 labels
+        benchmarkData.forEach((d, i) => {
+          d.rank = i + 1;
+          d.topLabel = d.rank <= 3 ? `${d.rank}` : "";
+        });
+
+        processedData.push({
+          benchmarkId: benchmark,
+          benchmarkName: benchmarkNames[benchmark],
+          data: benchmarkData,
+        });
+      });
+
+      // Visualization setup
+      const margin = {top: 50, right: 100, bottom: 100, left: 150};
+      const width = 800 - margin.left - margin.right;
+      const height = 500 - margin.top - margin.bottom;
+
+      const container = d3.select("#visualization");
+
+      processedData.forEach(benchmark => {
+        const svg = container
+          .append("div")
+          .attr("class", "chart-container")
+          .append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom);
+
+        const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // X scale
+        const x = d3.scaleLinear().domain([0, 100]).range([0, width]);
+
+        // Y scale
+        const y = d3
+          .scaleBand()
+          .domain(benchmark.data.map(d => d.model))
+          .range([0, height])
+          .padding(0.1);
+
+        // X Axis
+        g.append("g")
+          .attr("class", "x axis")
+          .attr("transform", `translate(0,${height})`)
+          .call(d3.axisBottom(x).ticks(5))
+          .append("text")
+          .attr("class", "axis-label")
+          .attr("x", width / 2)
+          .attr("y", 40)
+          .style("text-anchor", "middle")
+          .text("Normalized Score (0-100)");
+
+        // Y Axis
+        g.append("g")
+          .attr("class", "y axis")
+          .call(d3.axisLeft(y))
+          .append("text")
+          .attr("class", "axis-label")
+          .attr("transform", "rotate(-90)")
+          .attr("y", -margin.left + 20)
+          .attr("x", -height / 2)
+          .style("text-anchor", "middle")
+          .text("Models");
+
+        // Bars
+        g.selectAll(".bar")
+          .data(benchmark.data)
+          .enter()
+          .append("rect")
+          .attr("class", "bar")
+          .attr("x", 0)
+          .attr("y", d => y(d.model))
+          .attr("width", d => x(d.score))
+          .attr("height", y.bandwidth())
+          .attr("fill", d => modelColors[d.model] || "#ccc");
+
+        // Score labels
+        g.selectAll(".score-label")
+          .data(benchmark.data)
+          .enter()
+          .append("text")
+          .attr("class", "score-label")
+          .attr("x", d => x(d.score) + 5)
+          .attr("y", d => y(d.model) + y.bandwidth() / 2)
+          .attr("dy", "0.35em")
+          .text(d => d.score.toFixed(1));
+
+        // Top 3 labels
+        g.selectAll(".top-label")
+          .data(benchmark.data.filter(d => d.rank <= 3))
+          .enter()
+          .append("text")
+          .attr("class", "top-label")
+          .attr("x", d => x(d.score) - 20)
+          .attr("y", d => y(d.model) + y.bandwidth() / 2)
+          .attr("dy", "0.35em")
+          .text(d => d.topLabel);
+
+        // Benchmark title
+        svg
+          .append("text")
+          .attr("x", (width + margin.left + margin.right) / 2)
+          .attr("y", 30)
+          .attr("text-anchor", "middle")
+          .style("font-size", "18px")
+          .style("font-weight", "bold")
+          .text(benchmark.benchmarkName);
+
+        // Per-model legend (optional improvement: global legend)
+        const legend = svg
+          .append("g")
+          .attr("class", "legend")
+          .attr("transform", `translate(${width + margin.left - 100}, 50)`);
+
+        let yOffset = 0;
+        benchmark.data.forEach(d => {
+          const legendRow = legend.append("g").attr("transform", `translate(0, ${yOffset})`);
+
+          legendRow
+            .append("rect")
+            .attr("x", 0)
+            .attr("y", 0)
+            .attr("width", 15)
+            .attr("height", 15)
+            .attr("fill", modelColors[d.model] || "#ccc")
+            .attr("stroke", "#000");
+
+          legendRow
+            .append("text")
+            .attr("x", 20)
+            .attr("y", 12)
+            .text(`${d.model}`)
+            .style("font-size", "12px");
+
+          yOffset += 20;
+        });
+      });
+    </script>
+  </body>
+</html>

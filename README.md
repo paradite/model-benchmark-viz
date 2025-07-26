@@ -10,6 +10,7 @@ Rubrics is reproduced below for convenience:
 Criteria:
 - Side-by-side visualization without label: 8.5/10
 - Baseline visualization without label: 8/10
+- Horizontal bar chart (if cannot fit in the page): 7.5/10
 - Has major formatting issues: 5/10
 - Did not run / Code error: 1/10
 
@@ -122,6 +123,18 @@ I also ran Claude 3.7 again with the same prompt, but it produced a bar chart vi
 ![claude-3.7-2](output/claude-3.7-2.png)
 
 Source code: [claude-3.7-2.html](output/claude-3.7-2.html)
+
+### Qwen3 Coder (via OpenRouter Alibaba Plus)
+
+> Human rating: 7/10
+
+Qwen3 Coder (via OpenRouter Alibaba Plus) generated a visualization with horizontal bars (which is cannot be fit in the page). The legends overlaps with the bar chart, causing minor formatting issues.
+
+The first run generation was missing a chart, so we re-ran the prompt again.
+
+![qwen3-coder-or-alibaba-plus](output/qwen3-coder-or-alibaba-plus-2.png)
+
+Source code: [qwen3-coder-or-alibaba-plus.html](output/qwen3-coder-or-alibaba-plus-2.html)
 
 ### Gemini 2.5 Pro Experimental
 
