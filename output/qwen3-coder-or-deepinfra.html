@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Model Benchmark Results</title>
+    <script src="results.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .model-name {
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+      .benchmark-section {
+        margin-bottom: 30px;
+      }
+      .benchmark-title {
+        font-size: 1.2em;
+        margin-bottom: 10px;
+        text-decoration: underline;
+      }
+      .model-bar-container {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .model-bar {
+        height: 20px;
+        background-color: #4caf50;
+        border-radius: 4px;
+        text-align: right;
+        padding-right: 5px;
+        color: white;
+        font-size: 12px;
+        min-width: 50px;
+        white-space: nowrap;
+      }
+      .top-1 {
+        background-color: #ffd700 !important;
+      }
+      .top-2 {
+        background-color: #c0c0c0 !important;
+      }
+      .top-3 {
+        background-color: #cd7f32 !important;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 20px;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .legend-color-box {
+        width: 15px;
+        height: 15px;
+        border: 1px solid #000;
+      }
+      canvas {
+        max-width: 800px;
+        margin-top: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <div id="benchmark-container"></div>
+    <canvas id="radarChart"></canvas>
+    <div
+      class="legend"
+      id="legend"
+    ></div>
+
+    <script>
+      // Friendly names mapping
+      const BENCHMARK_FRIENDLY_NAMES = {
+        aider_polyglot: "Aider polyglot coding leaderboard",
+        kcores_llm_arena: "KCORES LLM Arena",
+      };
+
+      // Benchmark primary metrics
+      const BENCHMARK_METRICS = {
+        aider_polyglot: "percent_correct",
+        kcores_llm_arena: score => (score / 400) * 100, // Normalize 0-400 to 0-100
+      };
+
+      // Generate distinct colors for models
+      function generateColors(count) {
+        const colors = [];
+        for (let i = 0; i < count; i++) {
+          const hue = (i * (360 / count)) % 360;
+          colors.push(`hsl(${hue}, 70%, 50%)`);
+        }
+        return colors;
+      }
+
+      // Normalize score based on benchmark
+      function normalizeScore(benchmark, value) {
+        if (benchmark === "aider_polyglot") return value;
+        if (benchmark === "kcores_llm_arena") return (value / 400) * 100;
+        return value;
+      }
+
+      // Prepare data structure for visualization
+      function prepareData() {
+        const benchmarksData = {};
+        const modelNames = Object.keys(results);
+        const modelColors = generateColors(modelNames.length);
+        const modelColorMap = {};
+
+        modelNames.forEach((model, i) => {
+          modelColorMap[model] = modelColors[i];
+        });
+
+        // Initialize benchmark data holders
+        for (const benchmark in BENCHMARK_FRIENDLY_NAMES) {
+          benchmarksData[benchmark] = {
+            name: BENCHMARK_FRIENDLY_NAMES[benchmark],
+            models: [],
+          };
+        }
+
+        // Process results
+        for (const model in results) {
+          for (const benchmark in results[model]) {
+            if (benchmarksData[benchmark]) {
+              const rawValue = results[model][benchmark][BENCHMARK_METRICS[benchmark] || benchmark];
+              const normalizedValue = normalizeScore(benchmark, rawValue);
+
+              benchmarksData[benchmark].models.push({
+                name: model,
+                rawValue: rawValue,
+                normalizedValue: normalizedValue,
+                color: modelColorMap[model],
+              });
+            }
+          }
+        }
+
+        // Sort models by normalized score for each benchmark
+        for (const benchmark in benchmarksData) {
+          benchmarksData[benchmark].models.sort((a, b) => b.normalizedValue - a.normalizedValue);
+        }
+
+        return {benchmarksData, modelColorMap};
+      }
+
+      // Create benchmark visualization
+      function createBenchmarkVisualization(benchmarkData, container) {
+        const section = document.createElement("div");
+        section.className = "benchmark-section";
+
+        const title = document.createElement("div");
+        title.className = "benchmark-title";
+        title.textContent = benchmarkData.name;
+        section.appendChild(title);
+
+        benchmarkData.models.forEach((modelData, index) => {
+          const barContainer = document.createElement("div");
+          barContainer.className = "model-bar-container";
+
+          const label = document.createElement("div");
+          label.className = "model-name";
+          label.textContent = modelData.name;
+          barContainer.appendChild(label);
+
+          const barWrapper = document.createElement("div");
+          barWrapper.style.width = "70%";
+          barWrapper.style.position = "relative";
+
+          const bar = document.createElement("div");
+          bar.className = "model-bar";
+          bar.style.backgroundColor = modelData.color;
+          bar.style.width = `${modelData.normalizedValue}%`;
+
+          // Add top 3 class for highlighting
+          if (index === 0) bar.classList.add("top-1");
+          else if (index === 1) bar.classList.add("top-2");
+          else if (index === 2) bar.classList.add("top-3");
+
+          bar.textContent = `${modelData.normalizedValue.toFixed(1)}%`;
+          barWrapper.appendChild(bar);
+          barContainer.appendChild(barWrapper);
+          section.appendChild(barContainer);
+        });
+
+        container.appendChild(section);
+      }
+
+      // Create legend
+      function createLegend(modelColorMap, container) {
+        for (const model in modelColorMap) {
+          const item = document.createElement("div");
+          item.className = "legend-item";
+
+          const colorBox = document.createElement("div");
+          colorBox.className = "legend-color-box";
+          colorBox.style.backgroundColor = modelColorMap[model];
+
+          const label = document.createElement("span");
+          label.textContent = model;
+
+          item.appendChild(colorBox);
+          item.appendChild(label);
+          container.appendChild(item);
+        }
+      }
+
+      // Prepare radar chart data
+      function prepareRadarData(benchmarksData, modelColorMap) {
+        const modelNames = Object.keys(modelColorMap);
+        const datasets = [];
+        const labels = Object.values(BENCHMARK_FRIENDLY_NAMES);
+
+        modelNames.forEach(model => {
+          const data = [];
+
+          // Get value for each benchmark
+          Object.keys(BENCHMARK_FRIENDLY_NAMES).forEach(benchmark => {
+            const modelBenchmarkData = benchmarksData[benchmark].models.find(m => m.name === model);
+            if (modelBenchmarkData) {
+              data.push(modelBenchmarkData.normalizedValue);
+            } else {
+              data.push(0); // Model doesn't have data for this benchmark
+            }
+          });
+
+          datasets.push({
+            label: model,
+            data: data,
+            backgroundColor: modelColorMap[model] + "40", // Add transparency
+            borderColor: modelColorMap[model],
+            pointBackgroundColor: modelColorMap[model],
+          });
+        });
+
+        return {labels, datasets};
+      }
+
+      // Render radar chart
+      function renderRadarChart(radarData) {
+        const ctx = document.getElementById("radarChart").getContext("2d");
+        new Chart(ctx, {
+          type: "radar",
+          data: {
+            labels: radarData.labels,
+            datasets: radarData.datasets,
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: {
+                display: true,
+                text: "Model Comparison Across Benchmarks",
+              },
+              legend: {
+                position: "bottom",
+              },
+            },
+            scales: {
+              r: {
+                min: 0,
+                max: 100,
+                ticks: {
+                  stepSize: 20,
+                },
+              },
+            },
+          },
+        });
+      }
+
+      // Main initialization
+      function init() {
+        const {benchmarksData, modelColorMap} = prepareData();
+        const container = document.getElementById("benchmark-container");
+        const legendContainer = document.getElementById("legend");
+
+        // Create visualizations for each benchmark
+        for (const benchmark in benchmarksData) {
+          createBenchmarkVisualization(benchmarksData[benchmark], container);
+        }
+
+        // Create legend
+        createLegend(modelColorMap, legendContainer);
+
+        // Create radar chart
+        const radarData = prepareRadarData(benchmarksData, modelColorMap);
+        renderRadarChart(radarData);
+      }
+
+      // Run when page loads
+      window.onload = init;
+    </script>
+  </body>
+</html>
