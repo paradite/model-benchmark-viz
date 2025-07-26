@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Model Benchmark Results</title>
+    <script src="results.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f9f9f9;
+      }
+      h1 {
+        text-align: center;
+        color: #333;
+      }
+      .chart-container {
+        margin-bottom: 50px;
+      }
+      .axis path,
+      .axis line {
+        fill: none;
+        stroke: #000;
+        shape-rendering: crispEdges;
+      }
+      .bar {
+        opacity: 0.8;
+      }
+      .bar-label {
+        font-size: 12px;
+        text-anchor: middle;
+      }
+      .legend {
+        font-size: 14px;
+        margin-top: 20px;
+      }
+      .legend-item {
+        display: inline-block;
+        margin-right: 20px;
+      }
+      .legend-color {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-right: 5px;
+        vertical-align: middle;
+      }
+      .top3 {
+        font-weight: bold;
+        fill: gold;
+        stroke: orange;
+        stroke-width: 1px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <div id="visualization"></div>
+    <div
+      class="legend"
+      id="legend"
+    ></div>
+
+    <script>
+      // Friendly names mapping
+      const benchmarkNames = {
+        aider_polyglot: "Aider polyglot coding leaderboard",
+        kcores_llm_arena: "KCORES LLM Arena",
+      };
+
+      // Normalize a value from a given min-max range to 0-100
+      function normalize(value, min, max) {
+        return ((value - min) / (max - min)) * 100;
+      }
+
+      // Process data: collect models and their normalized scores
+      const processedData = [];
+      const modelSet = new Set();
+
+      // First pass: collect all models
+      for (const model in results) {
+        modelSet.add(model);
+      }
+      // const models = Array.from(modelSet);
+
+      // Assign consistent colors to models
+      const colorScale = d3.scaleOrdinal(d3.schemeCategory10).domain(models);
+
+      // Second pass: process benchmark data
+      for (const benchmarkKey in benchmarkNames) {
+        const displayName = benchmarkNames[benchmarkKey];
+        const benchmarkData = [];
+
+        for (const model of models) {
+          if (!results[model] || !results[model][benchmarkKey]) continue;
+
+          let score = null;
+          if (benchmarkKey === "aider_polyglot") {
+            score = results[model][benchmarkKey].percent_correct; // Already 0-100
+          } else if (benchmarkKey === "kcores_llm_ana") {
+            // Normalize from 0-400 to 0-100
+            score = normalize(results[model][benchmarkKey].normalized_score, 0, 400);
+          }
+
+          if (score !== null) {
+            benchmarkData.push({
+              model: model,
+              score: score,
+              benchmark: displayName,
+            });
+          }
+        }
+
+        // Sort descending to find top 3
+        benchmarkData.sort((a, b) => b.score - a.score);
+
+        // Mark top 3 (in case of ties, this will still mark them)
+        benchmarkData.forEach((d, i) => {
+          d.isTop3 = i < 3;
+        });
+
+        processedData.push(...benchmarkData);
+      }
+
+      // Visualization setup
+      const margin = {top: 40, right: 30, bottom: 100, left: 100};
+      const width = 900 - margin.left - margin.right;
+      const height = 500 - margin.top - margin.bottom;
+
+      const svg = d3
+        .select("#visualization")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom);
+
+      const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+      // Scales
+      const x0 = d3
+        .scaleBand()
+        .domain(Object.values(benchmarkNames))
+        .rangeRound([0, width])
+        .paddingInner(0.1);
+
+      const x1 = d3.scaleBand().domain(models).rangeRound([0, x0.bandwidth()]).padding(0.05);
+
+      const y = d3.scaleLinear().domain([0, 100]).rangeRound([height, 0]);
+
+      // Axes
+      g.append("g")
+        .attr("class", "x axis")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x0))
+        .selectAll("text")
+        .attr("transform", "rotate(-15)")
+        .style("text-anchor", "end");
+
+      g.append("g")
+        .attr("class", "y axis")
+        .call(
+          d3
+            .axisLeft(y)
+            .ticks(10)
+            .tickFormat(d => d + "%"),
+        )
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", "0.71em")
+        .attr("text-anchor", "end")
+        .text("Normalized Score");
+
+      // Bars
+      const benchmarkGroups = g
+        .selectAll(".benchmark-group")
+        .data(Object.values(benchmarkNames))
+        .enter()
+        .append("g")
+        .attr("class", "benchmark-group")
+        .attr("transform", d => `translate(${x0(d)},0)`);
+
+      benchmarkGroups.each(function (benchmarkName) {
+        const dataForBenchmark = processedData.filter(d => d.benchmark === benchmarkName);
+
+        const bars = d3
+          .select(this)
+          .selectAll(".bar")
+          .data(dataForBenchmark)
+          .enter()
+          .append("rect")
+          .attr("class", d => `bar ${d.isTop3 ? "top3" : ""}`)
+          .attr("x", d => x1(d.model))
+          .attr("y", d => y(d.score))
+          .attr("width", x1.bandwidth())
+          .attr("height", d => height - y(d.score))
+          .attr("fill", d => colorScale(d.model));
+
+        // Labels
+        d3.select(this)
+          .selectAll(".bar-label")
+          .data(dataForBenchmark)
+          .enter()
+          .append("text")
+          .attr("class", "bar-label")
+          .attr("x", d => x1(d.model) + x1.bandwidth() / 2)
+          .attr("y", d => y(d.score) - 5)
+          .text(d =>
+            d.isTop3
+              ? `${d.score.toFixed(1)} (#${
+                  dataForBenchmark.findIndex(m => m.model === d.model) + 1
+                })`
+              : "",
+          );
+      });
+
+      // Legend
+      const legendContainer = d3.select("#legend");
+      models.forEach(model => {
+        const legendItem = legendContainer.append("div").attr("class", "legend-item");
+
+        legendItem
+          .append("span")
+          .attr("class", "legend-color")
+          .style("background-color", colorScale(model));
+
+        legendItem.append("span").text(model);
+      });
+    </script>
+  </body>
+</html>
