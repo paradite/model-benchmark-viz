@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Model Benchmark Results</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+
+    <!-- Data source -->
+    <script src="results.js"></script>
+
+    <!-- Chart.js and plugins -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+
+    <style>
+      :root {
+        --bg: #0f1221;
+        --panel: #151936;
+        --text: #e8ecff;
+        --muted: #a7b0d6;
+        --grid: rgba(255, 255, 255, 0.08);
+        --accent: #6ee7ff;
+        --accent2: #c084fc;
+        --top1: #ffcc00;
+        --top2: #c0c0c0;
+        --top3: #cd7f32;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial,
+          "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji",
+          sans-serif;
+        color: var(--text);
+        background: radial-gradient(1000px 600px at 20% -10%, #1b1f45 0%, rgba(27, 31, 69, 0) 60%),
+          radial-gradient(900px 500px at 120% 10%, #1a204a 0%, rgba(26, 32, 74, 0) 60%), var(--bg);
+      }
+      header {
+        padding: 28px 22px 10px;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+      }
+      .subtitle {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .container {
+        padding: 16px 22px 28px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      .panel {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+      }
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+      }
+      .panel-title {
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 14px;
+        align-items: center;
+      }
+      .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15) inset;
+      }
+      .content {
+        padding: 16px;
+      }
+      .footnote {
+        color: var(--muted);
+        font-size: 12px;
+        padding: 0 16px 16px;
+      }
+      .badges {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .badge {
+        font-size: 11px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--muted);
+      }
+      .top-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .top-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      @media (min-width: 1000px) {
+        .grid {
+          grid-template-columns: 2.1fr 1fr;
+        }
+      }
+      canvas {
+        max-width: 100%;
+      }
+      .note {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .divider {
+        height: 1px;
+        background: rgba(255, 255, 255, 0.06);
+        margin: 8px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Model Benchmark Results</h1>
+      <div class="subtitle"
+        >Scores normalized to 0–100. Combined view compares models across benchmarks.</div
+      >
+    </header>
+
+    <div class="container">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Combined Benchmark Comparison</div>
+          <div
+            class="legend"
+            id="legend"
+          ></div>
+        </div>
+        <div class="content grid">
+          <div>
+            <canvas
+              id="radarChart"
+              height="340"
+            ></canvas>
+          </div>
+          <div>
+            <div
+              class="badges"
+              id="topLists"
+            ></div>
+            <div class="divider"></div>
+            <div class="footnote">
+              Benchmarks:
+              <ul>
+                <li>Aider polyglot coding leaderboard: percent_correct (already 0–100)</li>
+                <li>KCORES LLM Arena: normalized_score scaled from 0–400 to 0–100</li>
+              </ul>
+              Top-3 per benchmark highlighted on chart. Hover legend to emphasize a model.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Model Scores Table</div>
+        </div>
+        <div class="content">
+          <div class="note">Normalized 0–100. Missing entries shown as “—”.</div>
+          <div class="divider"></div>
+          <div id="table"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Friendly names
+      const BENCH_NAMES = {
+        aider_polyglot: "Aider polyglot coding leaderboard",
+        kcores_llm_arena: "KCORES LLM Arena",
+      };
+
+      // Bench normalization helpers
+      function normalizeScore(benchKey, obj) {
+        if (benchKey === "aider_polyglot" && obj && typeof obj.percent_correct === "number") {
+          return clamp(obj.percent_correct, 0, 100);
+        }
+        if (benchKey === "kcores_llm_arena" && obj && typeof obj.normalized_score === "number") {
+          // 0..400 -> 0..100
+          return clamp((obj.normalized_score / 400) * 100, 0, 100);
+        }
+        return null;
+      }
+      function clamp(v, min, max) {
+        return Math.max(min, Math.min(max, v));
+      }
+
+      // Derive normalized data matrix
+      const modelsList = Object.keys(results);
+      const benchKeys = ["aider_polyglot", "kcores_llm_arena"];
+      const benchLabels = benchKeys.map(k => BENCH_NAMES[k]);
+
+      const normalizedData = {};
+      modelsList.forEach(model => {
+        normalizedData[model] = {};
+        benchKeys.forEach(b => {
+          normalizedData[model][b] = normalizeScore(b, results[model][b]);
+        });
+      });
+
+      // Color palette for models
+      const palette = [
+        "#6ee7ff",
+        "#c084fc",
+        "#f472b6",
+        "#60a5fa",
+        "#34d399",
+        "#fbbf24",
+        "#fb7185",
+        "#a3e635",
+        "#f59e0b",
+        "#22d3ee",
+        "#93c5fd",
+        "#fda4af",
+        "#86efac",
+        "#fca5a5",
+        "#d8b4fe",
+      ];
+      const modelColors = {};
+      modelsList.forEach((m, i) => {
+        modelColors[m] = palette[i % palette.length];
+      });
+
+      // Compute top-3 per benchmark
+      function topNForBench(bKey, n = 3) {
+        const arr = modelsList
+          .map(m => ({model: m, score: normalizedData[m][bKey]}))
+          .filter(d => typeof d.score === "number");
+        arr.sort((a, b) => b.score - a.score);
+        return arr.slice(0, n);
+      }
+      const top3Aider = topNForBench("aider_polyglot");
+      const top3Kcores = topNForBench("kcores_llm_arena");
+
+      // Legend rendering
+      const legendEl = document.getElementById("legend");
+      modelsList.forEach(m => {
+        const item = document.createElement("div");
+        item.className = "legend-item";
+        item.dataset.model = m;
+        item.innerHTML = `<span class="swatch" style="background:${modelColors[m]}"></span>${m}`;
+        legendEl.appendChild(item);
+      });
+
+      // Top badges rendering
+      const topLists = document.getElementById("topLists");
+      function makeTopBadge(rankColor, text) {
+        const span = document.createElement("span");
+        span.className = "top-badge";
+        span.innerHTML = `<span class="top-dot" style="background:${rankColor}"></span>${text}`;
+        return span;
+      }
+      function renderTopBadges() {
+        topLists.innerHTML = "";
+        const title1 = document.createElement("div");
+        title1.style.marginBottom = "6px";
+        title1.textContent = "Top-3: " + BENCH_NAMES["aider_polyglot"];
+        topLists.appendChild(title1);
+        top3Aider.forEach((d, i) => {
+          const color = i === 0 ? "var(--top1)" : i === 1 ? "var(--top2)" : "var(--top3)";
+          topLists.appendChild(makeTopBadge(color, `#${i + 1} ${d.model} (${d.score.toFixed(1)})`));
+        });
+
+        const spacer = document.createElement("div");
+        spacer.style.flexBasis = "100%";
+        spacer.style.height = "6px";
+        topLists.appendChild(spacer);
+
+        const title2 = document.createElement("div");
+        title2.style.marginBottom = "6px";
+        title2.textContent = "Top-3: " + BENCH_NAMES["kcores_llm_arena"];
+        topLists.appendChild(title2);
+        top3Kcores.forEach((d, i) => {
+          const color = i === 0 ? "var(--top1)" : i === 1 ? "var(--top2)" : "var(--top3)";
+          topLists.appendChild(makeTopBadge(color, `#${i + 1} ${d.model} (${d.score.toFixed(1)})`));
+        });
+      }
+      renderTopBadges();
+
+      // Build radar dataset per model
+      const radarDatasets = modelsList.map(m => {
+        const data = benchKeys.map(b => {
+          const v = normalizedData[m][b];
+          return typeof v === "number" ? v : null;
+        });
+        return {
+          label: m,
+          data,
+          borderColor: modelColors[m],
+          backgroundColor: hexToRgba(modelColors[m], 0.12),
+          pointBackgroundColor: modelColors[m],
+          pointBorderColor: "#fff",
+          pointRadius: 3,
+          spanGaps: true,
+          borderWidth: 2,
+        };
+      });
+
+      // Radar chart
+      const radarCtx = document.getElementById("radarChart").getContext("2d");
+      Chart.register(ChartDataLabels, window["chartjs-plugin-annotation"]);
+      const radarChart = new Chart(radarCtx, {
+        type: "radar",
+        data: {
+          labels: benchLabels,
+          datasets: radarDatasets,
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {display: false},
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.dataset.label}: ${ctx.formattedValue}`,
+              },
+            },
+            datalabels: {
+              color: ctx => ctx.dataset.borderColor,
+              formatter: (value, context) => {
+                // label only if this point exists
+                if (value == null) return "";
+                return "";
+              },
+            },
+            annotation: {
+              annotations: {
+                // Rings for 25/50/75
+                ring25: {
+                  type: "line",
+                  borderColor: "rgba(255,255,255,0.08)",
+                },
+              },
+            },
+          },
+          scales: {
+            r: {
+              angleLines: {color: "var(--grid)"},
+              grid: {color: "var(--grid)"},
+              suggestedMin: 0,
+              suggestedMax: 100,
+              ticks: {
+                showLabelBackdrop: false,
+                color: "var(--muted)",
+                stepSize: 20,
+              },
+              pointLabels: {
+                color: "var(--text)",
+                font: {size: 13, weight: "600"},
+                callback: v => v,
+              },
+            },
+          },
+          elements: {line: {tension: 0.25}},
+          hover: {mode: "nearest", intersect: true},
+          onHover: (evt, activeEls) => {
+            const canvas = evt.chart.canvas;
+            canvas.style.cursor = activeEls.length ? "pointer" : "default";
+          },
+        },
+      });
+
+      // Highlight top-3 points via outline rings
+      function addTop3Markers() {
+        // Chart.js radar doesn't support per-point styling easily; emulate by increasing pointRadius for top-3
+        const topMap = {
+          aider_polyglot: indexOfLabel(BENCH_NAMES["aider_polyglot"]),
+          kcores_llm_arena: indexOfLabel(BENCH_NAMES["kcores_llm_arena"]),
+        };
+        const ranks = {
+          aider_polyglot: top3Aider.map(d => d.model),
+          kcores_llm_arena: top3Kcores.map(d => d.model),
+        };
+        radarChart.data.datasets.forEach(ds => {
+          const pr = [3, 3]; // default radii for two points
+          const pb = ["#fff", "#fff"];
+          const pbc = [ds.pointBackgroundColor, ds.pointBackgroundColor];
+
+          Object.keys(topMap).forEach(bKey => {
+            const idx = topMap[bKey];
+            const rankList = ranks[bKey];
+            const rIndex = rankList.indexOf(ds.label);
+            if (rIndex >= 0) {
+              // color ring by rank
+              const ringColor =
+                rIndex === 0
+                  ? getCssVar("--top1")
+                  : rIndex === 1
+                  ? getCssVar("--top2")
+                  : getCssVar("--top3");
+              pr[idx] = 6; // larger point
+              pb[idx] = ringColor;
+              pbc[idx] = ds.pointBackgroundColor;
+            }
+          });
+
+          ds.pointRadius = pr;
+          ds.pointBorderWidth = [2, 2];
+          ds.pointBorderColor = pb;
+          ds.pointBackgroundColor = pbc;
+        });
+        radarChart.update();
+      }
+      function indexOfLabel(lbl) {
+        return radarChart.data.labels.findIndex(l => l === lbl);
+      }
+      function getCssVar(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      }
+      function hexToRgba(hex, alpha) {
+        const c = hex.replace("#", "").trim();
+        const bigint = parseInt(c, 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+      addTop3Markers();
+
+      // Legend interactivity: hover to emphasize
+      legendEl.addEventListener("mouseover", e => {
+        const item = e.target.closest(".legend-item");
+        if (!item) return;
+        const model = item.dataset.model;
+        radarChart.data.datasets.forEach(ds => {
+          const on = ds.label === model;
+          ds.borderWidth = on ? 3 : 1.5;
+          ds.backgroundColor = hexToRgba(modelColors[ds.label], on ? 0.2 : 0.06);
+          ds.borderColor = modelColors[ds.label];
+        });
+        radarChart.update("none");
+      });
+      legendEl.addEventListener("mouseout", () => {
+        radarChart.data.datasets.forEach(ds => {
+          ds.borderWidth = 2;
+          ds.backgroundColor = hexToRgba(modelColors[ds.label], 0.12);
+        });
+        radarChart.update("none");
+      });
+
+      // Render a compact table for reference
+      function renderTable() {
+        const container = document.getElementById("table");
+        const headers = ["Model", ...benchLabels];
+        const table = document.createElement("table");
+        table.style.width = "100%";
+        table.style.borderCollapse = "collapse";
+        const thead = document.createElement("thead");
+        const trh = document.createElement("tr");
+        headers.forEach((h, idx) => {
+          const th = document.createElement("th");
+          th.textContent = h;
+          th.style.textAlign = idx === 0 ? "left" : "right";
+          th.style.padding = "10px 8px";
+          th.style.fontSize = "12px";
+          th.style.color = "var(--muted)";
+          th.style.borderBottom = "1px solid rgba(255,255,255,0.1)";
+          trh.appendChild(th);
+        });
+        thead.appendChild(trh);
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        modelsList.forEach(m => {
+          const tr = document.createElement("tr");
+          tr.style.borderBottom = "1px solid rgba(255,255,255,0.06)";
+          const td0 = document.createElement("td");
+          td0.style.padding = "10px 8px";
+          td0.style.fontSize = "13px";
+          td0.style.display = "flex";
+          td0.style.alignItems = "center";
+          td0.style.gap = "8px";
+          td0.innerHTML = `<span class="swatch" style="background:${modelColors[m]}"></span><span>${m}</span>`;
+          tr.appendChild(td0);
+          benchKeys.forEach((b, idx) => {
+            const td = document.createElement("td");
+            td.style.padding = "10px 8px";
+            td.style.textAlign = "right";
+            td.style.fontVariantNumeric = "tabular-nums";
+            const v = normalizedData[m][b];
+            td.textContent = typeof v === "number" ? v.toFixed(1) : "—";
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        container.innerHTML = "";
+        container.appendChild(table);
+      }
+      renderTable();
+    </script>
+  </body>
+</html>

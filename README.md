@@ -200,6 +200,16 @@ Gemini 2.5 Pro Preview 03-25 generated a visualization that is very similar to t
 
 Source code: [gemini-2.5-pro-preview-03-25.html](output/gemini-2.5-pro-preview-03-25.html)
 
+### Horizon Alpha
+
+> Human rating: 5.5/10
+
+Horizon Alpha generated generated an unusual visualzation with a vertical line and two ends representing two benchmarks. The visualization also had some formatting issues that makes it hard to read.
+
+We gave it a second try, but it generated something very similar again.
+
+![horizontal-alpha](output/horizontal-alpha.png) Source code: [horizontal-alpha.html](output/horizontal-alpha.html)
+
 ### Qwen3 235B A22B
 
 > Human rating: 5/10

@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Model Benchmark Results</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+
+    <!-- Load results data -->
+    <script src="results.js"></script>
+
+    <!-- Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+    <style>
+      :root {
+        --bg: #0f1220;
+        --panel: #171a2b;
+        --text: #e8ebff;
+        --muted: #a7b0d6;
+        --grid: #2a2f4a;
+        --accent: #6ea8fe;
+        --accent-2: #9b7bff;
+        --accent-3: #5fe1b8;
+        --warning: #ffd166;
+        --success: #7ddc85;
+        --danger: #ff6b6b;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(1200px 800px at 20% -10%, #1a1f35 0%, var(--bg) 50%) fixed;
+        color: var(--text);
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        line-height: 1.35;
+      }
+      header {
+        padding: 24px 20px 8px;
+        display: grid;
+        gap: 10px;
+      }
+      h1 {
+        margin: 0;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        font-size: clamp(20px, 2.6vw, 28px);
+      }
+      .subtitle {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .container {
+        padding: 12px 20px 24px;
+        display: grid;
+        gap: 16px;
+      }
+      .panel {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      @media (min-width: 1000px) {
+        .grid {
+          grid-template-columns: 2.2fr 1fr;
+        }
+      }
+      .panel-header {
+        padding: 14px 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .panel-title {
+        font-weight: 700;
+        font-size: 16px;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        align-items: center;
+      }
+      .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.04);
+        padding: 6px 8px;
+        border-radius: 10px;
+        font-size: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .swatch {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) inset;
+      }
+      .panel-body {
+        padding: 12px;
+      }
+      canvas {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 680px;
+      }
+      .benchmarks {
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+      }
+      .benchmark-card {
+        padding: 12px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .benchmark-title {
+        font-weight: 700;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .badge {
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--muted);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .top3-list {
+        display: grid;
+        gap: 6px;
+      }
+      .top3-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px dashed rgba(255, 255, 255, 0.08);
+      }
+      .model-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .rank {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 800;
+        color: #0b0e1a;
+      }
+      .rank-1 {
+        background: linear-gradient(135deg, #ffe36e, #ffd166);
+      }
+      .rank-2 {
+        background: linear-gradient(135deg, #e1e6f7, #cfd6f1);
+      }
+      .rank-3 {
+        background: linear-gradient(135deg, #f7c7a1, #f3a677);
+      }
+      .score {
+        font-variant-numeric: tabular-nums;
+        color: var(--text);
+        font-weight: 700;
+      }
+      .note {
+        color: var(--muted);
+        font-size: 12px;
+        padding: 0 12px 12px;
+      }
+      .footer {
+        padding: 14px 20px 28px;
+        color: var(--muted);
+        font-size: 12px;
+        text-align: center;
+      }
+      .spacer {
+        height: 6px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>Model Benchmark Results</h1>
+      <div class="subtitle">
+        Scores normalized to 0–100. Primary metrics: Aider polyglot coding leaderboard uses
+        percent_correct; KCORES LLM Arena normalized from 0–400.
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="grid">
+        <section class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Relative Performance Across Benchmarks</div>
+            <div
+              id="legend"
+              class="legend"
+            ></div>
+          </div>
+          <div class="panel-body">
+            <canvas
+              id="radarChart"
+              aria-label="Benchmark comparison radar chart"
+              role="img"
+            ></canvas>
+            <div class="note"
+              >Each model is assigned a unique color. Higher is better. Missing values are treated
+              as 0 for comparison purposes.</div
+            >
+          </div>
+        </section>
+
+        <aside class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Top 3 Models by Benchmark</div>
+            <span class="badge">Auto-detected from normalized scores</span>
+          </div>
+          <div class="benchmarks">
+            <div
+              class="benchmark-card"
+              id="top-aider"
+            >
+              <div class="benchmark-title">
+                Aider polyglot coding leaderboard
+                <span class="badge">percent_correct</span>
+              </div>
+              <div
+                class="top3-list"
+                id="top3-aider"
+              ></div>
+            </div>
+
+            <div
+              class="benchmark-card"
+              id="top-kcores"
+            >
+              <div class="benchmark-title">
+                KCORES LLM Arena
+                <span class="badge">normalized_score (0–400 → 0–100)</span>
+              </div>
+              <div
+                class="top3-list"
+                id="top3-kcores"
+              ></div>
+            </div>
+          </div>
+          <div class="spacer"></div>
+        </aside>
+      </div>
+    </div>
+
+    <div class="footer">
+      Data loaded from results.js. Visualization uses Chart.js with datalabels for top-3
+      annotations.
+    </div>
+
+    <script>
+      // Friendly benchmark names and primary metric extractors with normalization
+      const BENCHMARKS = [
+        {
+          key: "aider_polyglot",
+          label: "Aider polyglot coding leaderboard",
+          metricKey: "percent_correct",
+          normalize: v => v, // Already 0–100
+        },
+        {
+          key: "kcores_llm_arena",
+          label: "KCORES LLM Arena",
+          metricKey: "normalized_score",
+          normalize: v => (v == null ? 0 : (v / 400) * 100), // 0–400 to 0–100
+        },
+      ];
+
+      // Build model list and color palette
+      const modelNames = Object.keys(results);
+
+      // Distinct color palette for models
+      const baseColors = [
+        "#6ea8fe", // blue
+        "#9b7bff", // purple
+        "#5fe1b8", // teal
+        "#ffb86b", // orange
+        "#ff6b6b", // red
+        "#7ddc85", // green
+        "#ffd166", // yellow
+        "#f997d1", // pink
+        "#63c4ff", // sky
+        "#c2e34c", // lime
+        "#b892ff", // lavender
+        "#ffa8a8", // light red
+      ];
+      function colorForIndex(i) {
+        return baseColors[i % baseColors.length];
+      }
+
+      // Extract normalized scores matrix: models x benchmarks
+      function getNormalizedScores() {
+        return modelNames.map(model => {
+          const perBenchmark = BENCHMARKS.map(bench => {
+            const b = results[model][bench.key];
+            if (!b || b[bench.metricKey] == null) return 0;
+            return +bench.normalize(b[bench.metricKey]).toFixed(2);
+          });
+          return perBenchmark;
+        });
+      }
+
+      const normalizedScores = getNormalizedScores();
+
+      // Create legend
+      function renderLegend() {
+        const legend = document.getElementById("legend");
+        modelNames.forEach((name, i) => {
+          const item = document.createElement("span");
+          item.className = "legend-item";
+          const swatch = document.createElement("span");
+          swatch.className = "swatch";
+          swatch.style.background = colorForIndex(i);
+          const label = document.createElement("span");
+          label.textContent = name;
+          item.appendChild(swatch);
+          item.appendChild(label);
+          legend.appendChild(item);
+        });
+      }
+
+      // Compute top 3 per benchmark
+      function computeTop3PerBenchmark() {
+        const top = {};
+        BENCHMARKS.forEach((bench, bi) => {
+          const entries = modelNames.map((name, mi) => ({
+            model: name,
+            score: normalizedScores[mi][bi] || 0,
+            color: colorForIndex(mi),
+          }));
+          entries.sort((a, b) => b.score - a.score);
+          top[bench.key] = entries.slice(0, 3);
+        });
+        return top;
+      }
+
+      const TOP3 = computeTop3PerBenchmark();
+
+      // Render top-3 lists
+      function renderTop3() {
+        const map = {
+          aider_polyglot: "top3-aider",
+          kcores_llm_arena: "top3-kcores",
+        };
+        BENCHMARKS.forEach(bench => {
+          const container = document.getElementById(map[bench.key]);
+          container.innerHTML = "";
+          TOP3[bench.key].forEach((row, idx) => {
+            const rowElm = document.createElement("div");
+            rowElm.className = "top3-row";
+
+            const left = document.createElement("div");
+            left.className = "model-chip";
+            const rank = document.createElement("div");
+            rank.className = "rank rank-" + (idx + 1);
+            rank.textContent = idx + 1;
+
+            const sw = document.createElement("span");
+            sw.className = "swatch";
+            sw.style.background = row.color;
+
+            const label = document.createElement("span");
+            label.textContent = row.model;
+
+            left.appendChild(rank);
+            left.appendChild(sw);
+            left.appendChild(label);
+
+            const right = document.createElement("div");
+            right.className = "score";
+            right.textContent = row.score.toFixed(1);
+
+            rowElm.appendChild(left);
+            rowElm.appendChild(right);
+            container.appendChild(rowElm);
+          });
+        });
+      }
+
+      // Prepare Chart.js dataset
+      function buildRadarDatasets() {
+        return modelNames.map((name, i) => {
+          const data = normalizedScores[i];
+          const color = colorForIndex(i);
+          const fill = false;
+          return {
+            label: name,
+            data,
+            borderColor: color,
+            backgroundColor: hexToRgba(color, 0.14),
+            pointBackgroundColor: color,
+            pointBorderColor: "#ffffff",
+            pointHoverBackgroundColor: "#ffffff",
+            pointHoverBorderColor: color,
+            borderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            fill,
+          };
+        });
+      }
+
+      function hexToRgba(hex, alpha) {
+        const m = hex.replace("#", "");
+        const bigint = parseInt(m, 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return `rgba(${r},${g},${b},${alpha})`;
+      }
+
+      // Build radar chart
+      function renderRadar() {
+        const ctx = document.getElementById("radarChart").getContext("2d");
+        const labels = BENCHMARKS.map(b => b.label);
+
+        // Mark top-3 labels for each benchmark via datalabels
+        const topIndexByBenchmark = {};
+        BENCHMARKS.forEach((b, bi) => {
+          const topModels = TOP3[b.key].map(t => t.model);
+          topIndexByBenchmark[bi] = topModels;
+        });
+
+        // Chart
+        new Chart(ctx, {
+          type: "radar",
+          data: {
+            labels,
+            datasets: buildRadarDatasets(),
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {display: false},
+              tooltip: {
+                callbacks: {
+                  label: context => {
+                    const model = context.dataset.label;
+                    const score = context.formattedValue;
+                    return `${model}: ${score}`;
+                  },
+                },
+              },
+              datalabels: {
+                align: "top",
+                color: "#e8ebff",
+                formatter: (value, ctx) => {
+                  const bi = ctx.dataIndex;
+                  const model = ctx.dataset.label;
+                  const list = topIndexByBenchmark[bi] || [];
+                  const pos = list.indexOf(model);
+                  if (pos === -1) return "";
+                  const medal = pos === 0 ? "🥇" : pos === 1 ? "🥈" : "🥉";
+                  return `${medal} ${value.toFixed(1)}`;
+                },
+                font: {weight: "700", size: 10},
+                backgroundColor: "rgba(0,0,0,0.35)",
+                borderColor: "rgba(255,255,255,0.25)",
+                borderWidth: 1,
+                borderRadius: 4,
+                padding: 4,
+                clip: true,
+              },
+            },
+            scales: {
+              r: {
+                beginAtZero: true,
+                min: 0,
+                max: 100,
+                ticks: {
+                  showLabelBackdrop: false,
+                  color: "#a7b0d6",
+                  backdropColor: "transparent",
+                  stepSize: 20,
+                },
+                grid: {color: "rgba(255,255,255,0.15)"},
+                angleLines: {color: "rgba(255,255,255,0.15)"},
+                pointLabels: {
+                  color: "#e8ebff",
+                  font: {weight: "700"},
+                },
+              },
+            },
+            elements: {
+              line: {tension: 0.25},
+            },
+            animation: {
+              duration: 800,
+              easing: "easeOutCubic",
+            },
+          },
+          plugins: [ChartDataLabels],
+        });
+      }
+
+      // Init
+      renderLegend();
+      renderTop3();
+      renderRadar();
+    </script>
+  </body>
+</html>
