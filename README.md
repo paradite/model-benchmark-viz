@@ -208,7 +208,9 @@ Horizon Alpha generated generated an unusual visualzation with a vertical line a
 
 We gave it a second try, but it generated something very similar again.
 
-![horizontal-alpha](output/horizontal-alpha.png) Source code: [horizontal-alpha.html](output/horizontal-alpha.html)
+![horizon-alpha](output/horizon-alpha.png)
+
+Source code: [horizon-alpha.html](output/horizon-alpha.html)
 
 ### Qwen3 235B A22B
 
