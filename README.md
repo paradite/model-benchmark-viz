@@ -76,6 +76,16 @@ Although the bars are colored by model instead of by benchmark, different benchm
 
 Source code: [kimi-k2-0711-preview.html](output/kimi-k2-0711-preview.html)
 
+### GPT OSS 120B
+
+> Human rating: 8.5/10
+
+GPT OSS 120B (via Cerebras) generated a visualization with clear labels on the bar chart.
+
+![gpt-oss-120b-cerebras-1](output/gpt-oss-120b-cerebras-1.png)
+
+Source code: [gpt-oss-120b-cerebras-1.html](output/gpt-oss-120b-cerebras-1.html)
+
 ### o3
 
 > Human rating: 8/10

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Model Benchmark Results</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      h1 {
+        text-align: center;
+      }
+      .chart-container {
+        width: 95%;
+        max-width: 900px;
+        margin: auto;
+      }
+      .top3 {
+        margin-top: 30px;
+        max-width: 900px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .top3 h3 {
+        margin-bottom: 5px;
+      }
+      .top3 ul {
+        list-style: none;
+        padding: 0;
+      }
+      .top3 li {
+        margin: 3px 0;
+      }
+      .legend-color {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        margin-right: 5px;
+        vertical-align: middle;
+      }
+    </style>
+
+    <!-- Chart.js & datalabels plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+
+    <!-- Load the results data (same folder) -->
+    <script src="results.js"></script>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+
+    <div class="chart-container">
+      <canvas id="benchmarkChart"></canvas>
+    </div>
+
+    <div
+      class="top3"
+      id="top3Container"
+    ></div>
+
+    <script>
+      // -----------------------------------------------------------------
+      // 1️⃣   Prepare data
+      // -----------------------------------------------------------------
+      const benchmarks = {
+        aider_polyglot: "Aider polyglot coding leaderboard",
+        kcores_llm_arena: "KCORES LLM Arena",
+      };
+      const benchmarkKeys = Object.keys(benchmarks);
+
+      // helper: turn normalized_score (0‑400) into 0‑100
+      const normalizeKcores = s => (s / 400) * 100;
+
+      // Build a list of models (already in global `models`)
+      const modelList = Object.keys(results);
+
+      // Assign a distinct colour to every model (simple palette)
+      const palette = [
+        "#4e79a7",
+        "#a0cbe8",
+        "#f28e2b",
+        "#ffbe7d",
+        "#59a14f",
+        "#8cd17d",
+        "#b07aa1",
+        "#d4a6c8",
+        "#e15759",
+        "#ff9da7",
+        "#76b7b2",
+        "#bfbfbf",
+        "#79706e",
+        "#d37295",
+      ];
+      const modelColors = {};
+      modelList.forEach((m, i) => (modelColors[m] = palette[i % palette.length]));
+
+      // Collect scores per model per benchmark
+      const scores = {}; // scores[model][benchmarkKey] = value (0‑100)
+      modelList.forEach(m => {
+        scores[m] = {};
+        benchmarkKeys.forEach(b => {
+          const entry = results[m][b];
+          if (!entry) {
+            scores[m][b] = null;
+            return;
+          }
+
+          if (b === "aider_polyglot") {
+            scores[m][b] = entry.percent_correct; // already 0‑100
+          } else if (b === "kcores_llm_arena") {
+            scores[m][b] = normalizeKcores(entry.normalized_score);
+          }
+        });
+      });
+
+      // -----------------------------------------------------------------
+      // 2️⃣   Determine top‑3 models per benchmark
+      // -----------------------------------------------------------------
+      const top3PerBenchmark = {};
+      benchmarkKeys.forEach(b => {
+        const arr = modelList
+          .map(m => ({model: m, score: scores[m][b]}))
+          .filter(o => o.score !== null && !isNaN(o.score))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 3);
+        top3PerBenchmark[b] = arr;
+      });
+
+      // -----------------------------------------------------------------
+      // 3️⃣   Build Chart.js datasets
+      // -----------------------------------------------------------------
+      const datasets = modelList.map(m => ({
+        label: m,
+        data: benchmarkKeys.map(b => scores[m][b]),
+        backgroundColor: modelColors[m],
+        borderColor: "#222",
+        borderWidth: 1,
+        // highlight the bar if the model is in the top‑3 for that benchmark
+        borderWidth: benchmarkKeys.map((b, i) => {
+          const top3 = top3PerBenchmark[b].map(o => o.model);
+          return top3.includes(m) ? 3 : 1;
+        }),
+      }));
+
+      // -----------------------------------------------------------------
+      // 4️⃣   Render the chart
+      // -----------------------------------------------------------------
+      const ctx = document.getElementById("benchmarkChart").getContext("2d");
+      const chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: benchmarkKeys.map(k => benchmarks[k]),
+          datasets: datasets,
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: "Normalized Benchmark Scores (0‑100)",
+            },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const model = ctx.dataset.label;
+                  const score = ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) : "N/A";
+                  return `${model}: ${score}`;
+                },
+              },
+            },
+            datalabels: {
+              display: ctx => ctx.dataset.data[ctx.dataIndex] !== null,
+              anchor: "end",
+              align: "start",
+              formatter: val => val.toFixed(1),
+              font: {weight: "bold"},
+            },
+            legend: {
+              position: "bottom",
+              labels: {
+                generateLabels: chart => {
+                  // Show colour box + model name
+                  const original = Chart.defaults.plugins.legend.labels.generateLabels;
+                  const labels = original.call(this, chart);
+                  labels.forEach(l => {
+                    l.text = l.text;
+                  });
+                  return labels;
+                },
+              },
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {display: true, text: "Score (0‑100)"},
+            },
+          },
+        },
+        plugins: [ChartDataLabels],
+      });
+
+      // -----------------------------------------------------------------
+      // 5️⃣   Render Top‑3 lists
+      // -----------------------------------------------------------------
+      const top3Div = document.getElementById("top3Container");
+      benchmarkKeys.forEach(b => {
+        const container = document.createElement("div");
+        const heading = document.createElement("h3");
+        heading.textContent = `Top 3 – ${benchmarks[b]}`;
+        container.appendChild(heading);
+
+        const ul = document.createElement("ul");
+        top3PerBenchmark[b].forEach((entry, idx) => {
+          const li = document.createElement("li");
+          const colorBox = document.createElement("span");
+          colorBox.className = "legend-color";
+          colorBox.style.backgroundColor = modelColors[entry.model];
+          li.appendChild(colorBox);
+          li.appendChild(
+            document.createTextNode(`${idx + 1}. ${entry.model} – ${entry.score.toFixed(1)}`),
+          );
+          ul.appendChild(li);
+        });
+        container.appendChild(ul);
+        top3Div.appendChild(container);
+      });
+    </script>
+  </body>
+</html>

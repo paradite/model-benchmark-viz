@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Model Benchmark Results</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      h1 {
+        text-align: center;
+      }
+      #chartContainer {
+        max-width: 1000px;
+        margin: auto;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 10px;
+      }
+      .legendItem {
+        margin: 5px 10px;
+        display: flex;
+        align-items: center;
+      }
+      .legendColor {
+        width: 15px;
+        height: 15px;
+        margin-right: 5px;
+        border: 1px solid #000;
+      }
+    </style>
+    <!-- Result data -->
+    <script src="results.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <!-- Chart.js Data Labels plugin (for showing values) -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <div id="chartContainer">
+      <canvas id="benchmarkChart"></canvas>
+    </div>
+    <div
+      class="legend"
+      id="legend"
+    ></div>
+
+    <script>
+      // ----- Helper Functions -----
+      // Generate a deterministic pastel color for each model
+      const getColor = (idx, total) => {
+        const hue = Math.round((idx * 360) / total);
+        return `hsl(${hue}, 65%, 55%)`;
+      };
+
+      // ----- Data Processing -----
+      const benchmarkNames = ["Aider polyglot coding leaderboard", "KCORES LLM Arena"];
+
+      const modelList = Object.keys(results);
+      const datasets = [];
+      const scoresByBenchmark = [[], []]; // for ranking work
+
+      modelList.forEach((model, i) => {
+        const aider = results[model].aider_polyglot?.percent_correct ?? 0;
+        const kcoresRaw = results[model].kcores_llm_arena?.normalized_score ?? 0;
+        const kcores = (kcoresRaw / 400) * 100; // normalize 0‑400 → 0‑100
+
+        // store for ranking
+        scoresByBenchmark[0].push({model, score: aider});
+        scoresByBenchmark[1].push({model, score: kcores});
+
+        datasets.push({
+          label: model,
+          data: [aider, kcores],
+          backgroundColor: getColor(i, modelList.length),
+          borderColor: "#000",
+          borderWidth: 1,
+        });
+      });
+
+      // Determine top‑3 models for each benchmark
+      const top3PerBenchmark = scoresByBenchmark.map(arr => {
+        return arr
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 3)
+          .map(item => item.model);
+      });
+
+      // ----- Chart Configuration -----
+      const ctx = document.getElementById("benchmarkChart").getContext("2d");
+
+      const chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: benchmarkNames,
+          datasets: datasets,
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {display: false},
+            datalabels: {
+              anchor: "end",
+              align: "end",
+              formatter: value => value.toFixed(1),
+              font: {weight: "bold"},
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {display: true, text: "Score (0‑100)"},
+            },
+          },
+        },
+        plugins: [
+          {
+            // Plugin to draw a star for top‑3 bars
+            id: "top3Stars",
+            afterDatasetsDraw(chart, args, options) {
+              const {
+                ctx,
+                chartArea: {top, bottom, left, right},
+              } = chart;
+              chart.data.datasets.forEach((ds, dsIdx) => {
+                const meta = chart.getDatasetMeta(dsIdx);
+                meta.data.forEach((bar, index) => {
+                  const modelName = ds.label;
+                  if (top3PerBenchmark[index].includes(modelName)) {
+                    ctx.save();
+                    ctx.fillStyle = "#000";
+                    ctx.font = "bold 16px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "bottom";
+                    ctx.fillText("★", bar.x, bar.y - 4);
+                    ctx.restore();
+                  }
+                });
+              });
+            },
+          },
+        ],
+      });
+
+      // ----- Legend (color + model name) -----
+      const legendDiv = document.getElementById("legend");
+      modelList.forEach((model, i) => {
+        const color = getColor(i, modelList.length);
+        const item = document.createElement("div");
+        item.className = "legendItem";
+        item.innerHTML = `
+        <div class="legendColor" style="background:${color}"></div>
+        <span>${model}</span>
+      `;
+        legendDiv.appendChild(item);
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Model Benchmark Results</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <!-- results.js (contains the global variable `results` ) -->
+    <script src="results.js"></script>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 20px;
+      }
+      h1 {
+        text-align: center;
+      }
+      #chartContainer {
+        width: 100%;
+        max-width: 900px;
+        margin: auto;
+      }
+      .top-label {
+        font-weight: bold;
+        margin-top: 10px;
+      }
+      .legend {
+        margin-top: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .legend-item {
+        margin: 5px 10px;
+        display: flex;
+        align-items: center;
+      }
+      .legend-color {
+        width: 12px;
+        height: 12px;
+        margin-right: 5px;
+        border-radius: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+
+    <div id="chartContainer">
+      <canvas id="benchmarkChart"></canvas>
+    </div>
+
+    <div
+      class="top-label"
+      id="topAider"
+    ></div>
+    <div
+      class="top-label"
+      id="topKcores"
+    ></div>
+
+    <div
+      class="legend"
+      id="modelLegend"
+    ></div>
+
+    <script>
+      // ----- Configuration -------------------------------------------------
+      const friendlyNames = {
+        aider_polyglot: "Aider polyglot coding leaderboard",
+        kcores_llm_arena: "KCORES LLM Arena",
+      };
+
+      // ----- Normalisation -------------------------------------------------
+      const normalizedData = {}; // model → {aider_polyglot:0‑100, kcores_llm_arena:0‑100}
+      const benchmarks = ["aider_polyglot", "kcores_llm_arena"];
+      const maxKcores = 400; // given in the prompt
+
+      for (const model of Object.keys(results)) {
+        const entry = results[model];
+        normalizedData[model] = {};
+
+        // Aider polyglot – already 0‑100
+        if (entry.aider_polyglot && typeof entry.aider_polyglot.percent_correct === "number") {
+          normalizedData[model].aider_polyglot = entry.aider_polyglot.percent_correct;
+        } else {
+          normalizedData[model].aider_polyglot = null;
+        }
+
+        // KCORES – normalise from 0‑400 to 0‑100
+        if (entry.kcores_llm_arena && typeof entry.kcores_llm_arena.normalized_score === "number") {
+          normalizedData[model].kcores_llm_arena =
+            (entry.kcores_llm_arena.normalized_score / maxKcores) * 100;
+        } else {
+          normalizedData[model].kcores_llm_arena = null;
+        }
+      }
+
+      // ----- Determine Colors (one per model) -----------------------------
+      const palette = [
+        "#1f77b4",
+        "#ff7f0e",
+        "#2ca02c",
+        "#d62728",
+        "#9467bd",
+        "#8c564b",
+        "#e377c2",
+        "#7f7f7f",
+        "#bcbd22",
+        "#17becf",
+      ];
+      const modelColors = {};
+      const modelList = Object.keys(normalizedData);
+      modelList.forEach((model, idx) => {
+        modelColors[model] = palette[idx % palette.length];
+      });
+
+      // ----- Build Datasets for Chart.js -----------------------------------
+      const datasets = modelList.map(model => ({
+        label: model,
+        data: benchmarks.map(b => normalizedData[model][b]),
+        backgroundColor: modelColors[model],
+        borderColor: modelColors[model],
+        borderWidth: 1,
+        // Keep bars thin for many models
+        barPercentage: 0.8,
+        categoryPercentage: 0.8,
+      }));
+
+      // ----- Find Top‑3 per benchmark --------------------------------------
+      function topN(benchmark, n = 3) {
+        return modelList
+          .map(m => ({model: m, value: normalizedData[m][benchmark]}))
+          .filter(item => item.value !== null && !isNaN(item.value))
+          .sort((a, b) => b.value - a.value)
+          .slice(0, n);
+      }
+
+      const topAider = topN("aider_polyglot");
+      const topKcores = topN("kcores_llm_arena");
+
+      // ----- Insert Top‑3 Labels -------------------------------------------
+      function formatTop(list) {
+        return list.map(item => `${item.model} (${item.value.toFixed(1)})`).join(", ");
+      }
+      document.getElementById("topAider").textContent = `Top 3 – ${
+        friendlyNames.aider_polyglot
+      }: ${formatTop(topAider)}`;
+      document.getElementById("topKcores").textContent = `Top 3 – ${
+        friendlyNames.kcores_llm_arena
+      }: ${formatTop(topKcores)}`;
+
+      // ----- Build the Chart ------------------------------------------------
+      const ctx = document.getElementById("benchmarkChart").getContext("2d");
+      const benchmarkChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: benchmarks.map(b => friendlyNames[b]),
+          datasets: datasets,
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  const model = context.dataset.label;
+                  const bench = context.label;
+                  const score = context.parsed.y;
+                  if (score === null) return `${model}: No data`;
+                  return `${model}: ${score.toFixed(1)}`;
+                },
+              },
+            },
+            legend: {
+              display: false, // we build our own legend below
+            },
+            datalabels: {
+              // optional, show value on top of each bar, but only for non‑null values
+              display: function (context) {
+                return context.dataset.data[context.dataIndex] !== null;
+              },
+              anchor: "end",
+              align: "end",
+              formatter: value => (value ? value.toFixed(0) : ""),
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {
+                display: true,
+                text: "Score (0‑100)",
+              },
+            },
+            x: {
+              title: {
+                display: true,
+                text: "Benchmarks",
+              },
+            },
+          },
+        },
+      });
+
+      // ----- Custom Legend -------------------------------------------------
+      const legendContainer = document.getElementById("modelLegend");
+      modelList.forEach(model => {
+        const item = document.createElement("div");
+        item.className = "legend-item";
+        const swatch = document.createElement("div");
+        swatch.className = "legend-color";
+        swatch.style.backgroundColor = modelColors[model];
+        const label = document.createElement("span");
+        label.textContent = model;
+        item.appendChild(swatch);
+        item.appendChild(label);
+        legendContainer.appendChild(item);
+      });
+    </script>
+
+    <!-- Chart.js Data Labels plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  </body>
+</html>

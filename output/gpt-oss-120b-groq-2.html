@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Model Benchmark Results</title>
+    <!-- Load Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Load Chart.js DataLabels plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <!-- Load the data file (same directory) -->
+    <script src="results.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      h1 {
+        margin-bottom: 0.5rem;
+      }
+      #chartContainer {
+        max-width: 1200px;
+        margin: auto;
+      }
+      .legend {
+        margin-top: 20px;
+      }
+      .legend ul {
+        list-style: none;
+        padding: 0;
+      }
+      .legend li {
+        margin-bottom: 4px;
+      }
+      .top‑label {
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <div id="chartContainer">
+      <canvas id="benchmarkChart"></canvas>
+    </div>
+    <div class="legend">
+      <h3>Top‑3 Models per Benchmark</h3>
+      <ul id="top3List"></ul>
+    </div>
+
+    <script>
+      // Wait for results.js to load (it defines `results` and `models`)
+      // ---------------------------------------------------------
+
+      const benchmarks = {
+        aider_polyglot: "Aider polyglot coding leaderboard",
+        kcores_llm_arena: "KCORES LLM Arena",
+      };
+
+      // Colors – use a stable palette (D3 category10)
+      const colorPalette = [
+        "#1f77b4",
+        "#ff7f0e",
+        "#2ca02c",
+        "#d62728",
+        "#9467bd",
+        "#8c564b",
+        "#e377c2",
+        "#7f7f7f",
+        "#bcbd22",
+        "#17becf",
+      ];
+
+      // Compute normalized scores and collect model names
+
+      // Helper to get normalized score for each benchmark
+      function getScore(modelName, benchmarkKey) {
+        const entry = results[modelName] || {};
+        if (benchmarkKey === "aider_polyglot") {
+          return entry[benchmarkKey]?.percent_correct ?? null;
+        }
+        if (benchmarkKey === "kcores_llm_arena") {
+          const raw = entry[benchmarkKey]?.normalized_score;
+          return raw !== undefined ? raw / 4 : null; // (score/400)*100 = score/4
+        }
+        return null;
+      }
+
+      // Build data for Chart.js
+      const chartData = {
+        labels: [benchmarks.aider_polyglot, benchmarks.kcores_llm_arena],
+        datasets: [], // one dataset per model (colored)
+      };
+
+      // Keep track of top‑3 for each benchmark
+      const scoresByBench = {
+        aider_polyglot: [],
+        kcores_llm_arena: [],
+      };
+
+      // Populate scoresByBench for ranking
+      models.forEach((model, i) => {
+        const aideScore = getScore(model, "aider_polyglot");
+        const kcoreScore = getScore(model, "kcores_llm_arena");
+        if (aideScore !== null) scoresByBench.aider_polyglot.push({model, score: aideScore});
+        if (kcoreScore !== null) scoresByBench.kcores_llm_arena.push({model, score: kcoreScore});
+      });
+
+      // Determine top‑3 per benchmark (sorted descending)
+      const top3 = {
+        aider_polyglot: scoresByBench.aider_polyglot
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 3)
+          .map(o => o.model),
+        kcores_llm_arena: scoresByBench.kcores_llm_arena
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 3)
+          .map(o => o.model),
+      };
+
+      // Build datasets with per‑point styling for top‑3 highlight
+      models.forEach((model, idx) => {
+        const color = colorPalette[idx % colorPalette.length];
+        const aScore = getScore(model, "aider_polyglot");
+        const kScore = getScore(model, "kcores_llm_arena");
+        const data = [aScore, kScore];
+
+        // For each bar (benchmark) we can define a specific border width
+        const borderWidths = [
+          top3.aider_polyglot.includes(model) ? 4 : 1,
+          top3.kcores_llm_arena.includes(model) ? 4 : 1,
+        ];
+
+        chartData.datasets.push({
+          label: model,
+          data,
+          backgroundColor: color + "80", // semi‑transparent
+          borderColor: color,
+          borderWidth: borderWidths,
+          // Tooltip customizing to show real scores (not percentage for missing)
+          tooltip: {enabled: true},
+        });
+      });
+
+      // Create the chart
+      const ctx = document.getElementById("benchmarkChart").getContext("2d");
+
+      const benchmarkChart = new Chart(ctx, {
+        type: "bar",
+        data: chartData,
+        options: {
+          plugins: {
+            legend: {position: "bottom", labels: {usePointStyle: true}},
+            title: {display: true, text: "Model Performance Across Benchmarks"},
+            tooltip: {
+              callbacks: {
+                // Show the raw score (0‑100) and also percentage label
+                label: function (context) {
+                  const model = context.dataset.label;
+                  const benchmarkIdx = context.dataIndex; // 0 or 1
+                  const benchmarkKey = benchmarkIdx === 0 ? "aider_polyglot" : "kcores_llm_arena";
+                  const value = context.parsed.y;
+                  if (value === null) return `${model}: No data`;
+                  const percent = value.toFixed(1) + "%";
+                  return `${model}: ${percent}`;
+                },
+              },
+            },
+            datalabels: {
+              display: true,
+              formatter: value => (value !== null ? value.toFixed(0) + "%" : "–"),
+              color: "#000",
+              anchor: "end",
+              align: "top",
+              font: {weight: "bold"},
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {display: true, text: "Score (0‑100)"},
+            },
+          },
+        },
+        plugins: [ChartDataLabels],
+      });
+
+      // Populate the top‑3 list beneath the chart
+      const topListElm = document.getElementById("top3List");
+      const listItems = [
+        `<li class="top‑label">Aider polyglot coding leaderboard: ${top3.aider_polyglot.join(
+          ", ",
+        )}</li>`,
+        `<li class="top‑label">KCORES LLM Arena: ${top3.kcores_llm_arena.join(", ")}</li>`,
+      ];
+      topListElm.innerHTML = listItems.join("");
+    </script>
+  </body>
+</html>

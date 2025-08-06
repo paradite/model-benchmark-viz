@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Model Benchmark Results</title>
+    <!-- Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <!-- Load the data (results.js must be in the same folder) -->
+    <script src="results.js"></script>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 2rem;
+        background: #fafafa;
+      }
+      h1 {
+        text-align: center;
+      }
+      #chartContainer {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .top3 {
+        margin-top: 1rem;
+        font-size: 0.9rem;
+      }
+      .top3 strong {
+        color: #333;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        margin-right: 1rem;
+      }
+      .legend-color {
+        width: 12px;
+        height: 12px;
+        margin-right: 0.4rem;
+        border: 1px solid #555;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+
+    <div id="chartContainer">
+      <canvas id="benchChart"></canvas>
+    </div>
+
+    <div
+      id="top3Container"
+      class="top3"
+    ></div>
+
+    <div
+      id="legend"
+      class="legend"
+    ></div>
+
+    <script>
+      // ---- Configuration -------------------------------------------------------
+      const benchmarkInfo = {
+        aider_polyglot: {
+          name: "Aider polyglot coding leaderboard",
+          // already on a 0‑100 scale
+          getScore: d => d.percent_correct,
+        },
+        kcores_llm_arena: {
+          name: "KCORES LLM Arena",
+          // normalize 0‑400 → 0‑100
+          getScore: d => (d.normalized_score / 400) * 100,
+        },
+      };
+
+      const benchmarkKeys = Object.keys(benchmarkInfo);
+      const benchmarkNames = benchmarkKeys.map(k => benchmarkInfo[k].name);
+
+      // ---- Prepare datasets for Chart.js ---------------------------------------
+      const colors = [
+        "#4e79a7",
+        "#f28e2b",
+        "#e15759",
+        "#76b7b2",
+        "#59a14f",
+        "#edc949",
+        "#af7aa1",
+        "#ff9da7",
+        "#9c755f",
+        "#bab0ab",
+      ];
+      const modelColorMap = {};
+
+      const datasets = models.map((model, idx) => {
+        const color = colors[idx % colors.length];
+        modelColorMap[model] = color;
+
+        const data = benchmarkKeys.map(bk => {
+          const benchData = results[model][bk];
+          if (!benchData) return null; // model not evaluated on this bench
+          const raw = benchmarkInfo[bk].getScore(benchData);
+          // guard against undefined / NaN
+          return typeof raw === "number" && !isNaN(raw) ? Number(raw.toFixed(2)) : null;
+        });
+
+        return {
+          label: model,
+          data,
+          backgroundColor: color,
+          borderColor: "#222",
+          borderWidth: 1,
+          // highlight the top‑3 bars later (handled in plugin)
+        };
+      });
+
+      // ---- Determine top‑3 models per benchmark ---------------------------------
+      const top3PerBench = benchmarkKeys.map((bk, benchIdx) => {
+        const scores = models
+          .map(m => {
+            const val = datasets.find(d => d.label === m).data[benchIdx];
+            return {model: m, score: val};
+          })
+          .filter(o => o.score !== null);
+        scores.sort((a, b) => b.score - a.score);
+        return scores.slice(0, 3);
+      });
+
+      // ---- Create Chart ---------------------------------------------------------
+      const ctx = document.getElementById("benchChart").getContext("2d");
+
+      // Plugin to draw a label above the top‑3 bars
+      const top3LabelPlugin = {
+        id: "top3Label",
+        afterDatasetsDraw(chart, args, options) {
+          const {
+            ctx,
+            chartArea: {top, bottom, left, right},
+            scales: {x, y},
+          } = chart;
+          top3PerBench.forEach((top3, benchIdx) => {
+            top3.forEach(item => {
+              const datasetIdx = datasets.findIndex(d => d.label === item.model);
+              const meta = chart.getDatasetMeta(datasetIdx);
+              const bar = meta.data[benchIdx];
+              if (!bar) return;
+              const {x: barX, y: barY, base: barBase} = bar.getProps(["x", "y", "base"], true);
+              const label = item.model;
+              ctx.save();
+              ctx.fillStyle = "#000";
+              ctx.font = "10px sans-serif";
+              ctx.textAlign = "center";
+              ctx.fillText(label, barX, barY - 4);
+              ctx.restore();
+            });
+          });
+        },
+      };
+
+      const benchChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: benchmarkNames,
+          datasets: datasets,
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {display: false}, // we build a custom legend below
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}`,
+              },
+            },
+            title: {
+              display: true,
+              text: "Model Performance (0‑100 normalized score)",
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {display: true, text: "Score (0‑100)"},
+            },
+            x: {
+              title: {display: true, text: "Benchmark"},
+            },
+          },
+        },
+        plugins: [top3LabelPlugin],
+      });
+
+      // ---- Render custom legend -------------------------------------------------
+      const legendDiv = document.getElementById("legend");
+      models.forEach(m => {
+        const item = document.createElement("div");
+        item.className = "legend-item";
+        const swatch = document.createElement("div");
+        swatch.className = "legend-color";
+        swatch.style.backgroundColor = modelColorMap[m];
+        const label = document.createElement("span");
+        label.textContent = m;
+        item.appendChild(swatch);
+        item.appendChild(label);
+        legendDiv.appendChild(item);
+      });
+
+      // ---- Render Top‑3 lists ----------------------------------------------------
+      const top3Div = document.getElementById("top3Container");
+      benchmarkKeys.forEach((bk, idx) => {
+        const heading = document.createElement("div");
+        heading.innerHTML = `<strong>${benchmarkInfo[bk].name} – Top 3:</strong>`;
+        const list = document.createElement("ul");
+        top3PerBench[idx].forEach(o => {
+          const li = document.createElement("li");
+          li.textContent = `${o.model} – ${o.score.toFixed(2)}`;
+          list.appendChild(li);
+        });
+        top3Div.appendChild(heading);
+        top3Div.appendChild(list);
+      });
+    </script>
+  </body>
+</html>

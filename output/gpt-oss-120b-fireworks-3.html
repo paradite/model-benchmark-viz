@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Model Benchmark Results</title>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 40px;
+        background: #fafafa;
+      }
+      h1 {
+        text-align: center;
+      }
+      #chartContainer {
+        width: 100%;
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+      .top3 {
+        margin-top: 20px;
+        text-align: center;
+      }
+      .model-label {
+        font-weight: bold;
+        margin-right: 5px;
+      }
+    </style>
+    <!-- Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <script src="results.js"></script>
+    <!-- contains `results` and `models` -->
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <div id="chartContainer">
+      <canvas id="benchmarkChart"></canvas>
+    </div>
+
+    <div
+      class="top3"
+      id="top3-aider"
+    ></div>
+    <div
+      class="top3"
+      id="top3-kcores"
+    ></div>
+
+    <script>
+      // ---- Helper: generate distinct colors for models ----
+      function generateColors(n) {
+        const base = [
+          "#1f77b4",
+          "#ff7f0e",
+          "#2ca02c",
+          "#d62728",
+          "#9467bd",
+          "#8c564b",
+          "#e377c2",
+          "#7f7f7f",
+          "#bcbd22",
+          "#17becf",
+        ];
+        const colors = [];
+        for (let i = 0; i < n; i++) {
+          colors.push(base[i % base.length]);
+        }
+        return colors;
+      }
+
+      // ---- Normalization ----
+      function normalizeKcores(val) {
+        // original range 0‑400 -> 0‑100
+        return (val / 400) * 100;
+      }
+
+      // Friendly benchmark names
+      const benchInfo = {
+        aider_polyglot: "Aider polyglot coding leaderboard",
+        kcores_llm_arena: "KCORES LLM Arena",
+      };
+
+      // Collect data for the two benchmarks
+      const benchmarks = ["aider_polyglot", "kcores_llm_arena"];
+      const benchmarkNames = benchmarks.map(b => benchInfo[b]);
+
+      // Prepare dataset structure for Chart.js
+      const modelColors = {};
+      const colors = generateColors(models.length);
+      models.forEach((model, idx) => {
+        modelColors[model] = colors[idx];
+      });
+
+      const datasets = benchmarks.map((bench, benchIdx) => {
+        return {
+          label: benchmarkNames[benchIdx],
+          data: models.map(m => {
+            const entry = results[m][bench];
+            if (!entry) return null; // model missing this benchmark
+            if (bench === "aider_polyglot") return entry.percent_correct; // already 0‑100
+            if (bench === "kcores_llm_arena") return normalizeKcores(entry.normalized_score);
+          }),
+          backgroundColor: models.map(m => modelColors[m] + "80"), // semi‑transparent
+          borderColor: models.map(m => modelColors[m]),
+          borderWidth: 1,
+        };
+      });
+
+      // ---- Determine top‑3 per benchmark ----
+      function getTop3(bench) {
+        const scores = models.map(m => {
+          const entry = results[m][bench];
+          if (!entry) return {model: m, score: -Infinity};
+          const s =
+            bench === "aider_polyglot"
+              ? entry.percent_correct
+              : normalizeKcores(entry.normalized_score);
+          return {model: m, score: s};
+        });
+        scores.sort((a, b) => b.score - a.score);
+        return scores.slice(0, 3).filter(item => item.score > -Infinity);
+      }
+
+      // ---- Render top‑3 lists ----
+      function renderTop3() {
+        const topAider = getTop3("aider_polyglot");
+        const topKcores = getTop3("kcores_llm_arena");
+
+        const divAider = document.getElementById("top3-aider");
+        const divKcores = document.getElementById("top3-kcores");
+
+        divAider.innerHTML =
+          `<span class="model-label">Top 3 – ${benchInfo.aider_polyglot}:</span>` +
+          topAider
+            .map(
+              (t, i) =>
+                `<span style="color:${modelColors[t.model]};">#${i + 1} ${
+                  t.model
+                } (${t.score.toFixed(1)}%)</span>`,
+            )
+            .join(" | ");
+
+        divKcores.innerHTML =
+          `<span class="model-label">Top 3 – ${benchInfo.kcores_llm_arena}:</span>` +
+          topKcores
+            .map(
+              (t, i) =>
+                `<span style="color:${modelColors[t.model]};">#${i + 1} ${
+                  t.model
+                } (${t.score.toFixed(1)}%)</span>`,
+            )
+            .join(" | ");
+      }
+      renderTop3();
+
+      // ---- Create the chart ----
+      const ctx = document.getElementById("benchmarkChart").getContext("2d");
+      const benchmarkChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: models,
+          datasets: datasets,
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: "top",
+              labels: {
+                generateLabels: function (chart) {
+                  // Show each model only once with its color
+                  const modelsSeen = new Set();
+                  return models
+                    .map((model, i) => {
+                      if (modelsSeen.has(model)) return null;
+                      modelsSeen.add(model);
+                      return {
+                        text: model,
+                        fillStyle: modelColors[model],
+                        strokeStyle: modelColors[model],
+                        lineWidth: 1,
+                        hidden: false,
+                        index: i,
+                      };
+                    })
+                    .filter(l => l !== null);
+                },
+              },
+            },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  const model = context.label;
+                  const bench = context.dataset.label;
+                  const value = context.parsed.y;
+                  if (value === null) return `${bench}: No data`;
+                  return `${bench}: ${value.toFixed(1)}%`;
+                },
+              },
+            },
+            datalabels: {
+              display: false,
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                callback: function (value) {
+                  return value + "%";
+                },
+              },
+              title: {
+                display: true,
+                text: "Score (0‑100 %)",
+              },
+            },
+            x: {
+              title: {
+                display: true,
+                text: "Model",
+              },
+              ticks: {
+                maxRotation: 60,
+                minRotation: 45,
+              },
+            },
+          },
+        },
+        plugins: [], // no extra plugins needed
+      });
+    </script>
+  </body>
+</html>

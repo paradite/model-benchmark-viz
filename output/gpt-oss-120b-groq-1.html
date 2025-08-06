@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Model Benchmark Results</title>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 30px;
+      }
+      h1 {
+        text-align: center;
+      }
+      #chartContainer {
+        width: 95%;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .legend-item {
+        display: inline-block;
+        margin-right: 15px;
+        font-size: 0.9rem;
+      }
+      .top-label {
+        font-weight: bold;
+        color: #000;
+      }
+    </style>
+
+    <!-- Load results data -->
+    <script src="results.js"></script>
+
+    <!-- Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+  </head>
+
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <div id="chartContainer">
+      <canvas id="benchmarkChart"></canvas>
+    </div>
+
+    <script>
+      // --------------------------------------------------------------
+      // 1. Prepare data & colors
+      // --------------------------------------------------------------
+
+      const modelNames = Object.keys(results); // all model names
+
+      // assign each model a distinct color (using a simple hue rotation)
+      const colors = {};
+      modelNames.forEach((model, i) => {
+        const hue = (i * 47) % 360; // 47° ≈ nicely spaced
+        colors[model] = `hsl(${hue}, 70%, 50%)`;
+      });
+
+      // --------------------------------------------------------------
+      // 2. Normalise data
+      // --------------------------------------------------------------
+
+      // a) Aider Polyglot – percent_correct (already 0‑100)
+      // b) KCORES – normalized_score (0‑400) → 0‑100
+      const benchmarkInfo = {
+        aider_polyglot: {
+          name: "Aider polyglot coding leaderboard",
+          getValue: obj => obj?.aider_polyglot?.percent_correct ?? null,
+          max: 100,
+          min: 0,
+        },
+        kcores_llm_arena: {
+          name: "KCORES LLM Arena",
+          getValue: obj => {
+            const raw = obj?.kcores_llm_arena?.normalized_score;
+            return raw !== undefined ? (raw / 400) * 100 : null; // 0‑100
+          },
+          max: 100,
+          min: 0,
+        },
+      };
+
+      // Build dataset arrays for Chart.js
+      const datasets = Object.entries(benchmarkInfo).map(([key, meta]) => {
+        const data = [];
+        const bg = [];
+        modelNames.forEach(m => {
+          const value = meta.getValue(results[m]);
+          data.push(value !== null ? +value.toFixed(2) : null);
+          bg.push(colors[m]);
+        });
+        return {
+          label: meta.name,
+          data,
+          backgroundColor: bg,
+          borderColor: bg.map(c => c),
+          borderWidth: 1,
+        };
+      });
+
+      // --------------------------------------------------------------
+      // 3. Determine top‑3 per benchmark
+      // --------------------------------------------------------------
+
+      // topRanks[benchmarkKey][modelName] = rank (1‑3) or undefined
+      const topRanks = {};
+
+      Object.entries(benchmarkInfo).forEach(([key, meta]) => {
+        // collect {model, value}
+        const values = modelNames
+          .map(m => ({
+            model: m,
+            value: meta.getValue(results[m]),
+          }))
+          .filter(d => d.value !== null && !isNaN(d.value));
+
+        // sort descending
+        values.sort((a, b) => b.value - a.value);
+        const topThree = values.slice(0, 3);
+        topRanks[key] = {};
+        topThree.forEach((item, idx) => {
+          topRanks[key][item.model] = idx + 1; // rank 1‑3
+        });
+      });
+
+      // --------------------------------------------------------------
+      // 4. Create Chart
+      // --------------------------------------------------------------
+
+      const ctx = document.getElementById("benchmarkChart").getContext("2d");
+
+      const chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: modelNames,
+          datasets: datasets,
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: "Model Benchmark Results (normalized 0‑100 scale)",
+            },
+            tooltip: {
+              callbacks: {
+                label: context => {
+                  const model = context.label;
+                  const datasetIndex = context.datasetIndex;
+                  const key = Object.keys(benchmarkInfo)[datasetIndex];
+                  const rank = topRanks[key][model];
+                  const rankLabel = rank ? ` (Rank #${rank})` : "";
+                  const value = context.parsed.x !== undefined ? context.parsed.x : context.parsed;
+                  return `${context.dataset.label}: ${value}${rankLabel}`;
+                },
+              },
+            },
+            legend: {
+              // custom label to show “#1” etc.
+              labels: {
+                generateLabels: chart => {
+                  const original = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                  return original.map(label => {
+                    const datasetIdx = label.datasetIndex;
+                    const benchmarkKey = Object.keys(benchmarkInfo)[datasetIdx];
+                    const model = label.text;
+                    const rank = topRanks[benchmarkKey][model];
+                    return {
+                      ...label,
+                      text: rank ? `${model} #${rank}` : model,
+                      // make top‑3 items bold in the legend
+                      font: {
+                        weight: rank ? "bold" : "normal",
+                      },
+                    };
+                  });
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              stacked: false,
+              max: 100,
+              title: {
+                display: true,
+                text: "Score (0‑100)",
+              },
+            },
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

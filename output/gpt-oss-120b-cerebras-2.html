@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Model Benchmark Results</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      h1 {
+        text-align: center;
+      }
+      #chartContainer {
+        width: 100%;
+        max-width: 900px;
+        margin: auto;
+      }
+      .topList {
+        margin-top: 20px;
+      }
+      .topList h3 {
+        margin-bottom: 5px;
+      }
+      .topList ol {
+        margin: 0;
+        padding-left: 20px;
+      }
+      .legendItem {
+        display: flex;
+        align-items: center;
+        margin-right: 15px;
+      }
+      .legendItem span {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        margin-right: 5px;
+      }
+    </style>
+    <!-- Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <!-- dataLabels plugin for showing values on bars -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <!-- Load the results data (provided in the same directory) -->
+    <script src="results.js"></script>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <div id="chartContainer">
+      <canvas id="benchmarkChart"></canvas>
+    </div>
+
+    <div
+      class="topList"
+      id="topAider"
+    ></div>
+    <div
+      class="topList"
+      id="topKcores"
+    ></div>
+
+    <script>
+      // -------------------------------------------------------------
+      // Helper: generate a distinct colour for each model
+      // -------------------------------------------------------------
+      const modelNames = Object.keys(results);
+      const baseColors = [
+        "#1f77b4",
+        "#ff7f0e",
+        "#2ca02c",
+        "#d62728",
+        "#9467bd",
+        "#8c564b",
+        "#e377c2",
+        "#7f7f7f",
+        "#bcbd22",
+        "#17becf",
+      ];
+      const modelColors = {};
+      modelNames.forEach((model, i) => {
+        modelColors[model] = baseColors[i % baseColors.length];
+      });
+
+      // -------------------------------------------------------------
+      // Benchmark definitions
+      // -------------------------------------------------------------
+      const benchmarks = [
+        {
+          key: "aider_polyglot",
+          name: "Aider polyglot coding leaderboard",
+          // percent_correct is already 0‑100
+          getScore: rec => rec?.percent_correct ?? null,
+        },
+        {
+          key: "kcores_llm_arena",
+          name: "KCORES LLM Arena",
+          // normalize 0‑400 → 0‑100
+          getScore: rec => {
+            if (!rec?.normalized_score && rec?.normalized_score !== 0) return null;
+            return (rec.normalized_score / 400) * 100;
+          },
+        },
+      ];
+
+      // -------------------------------------------------------------
+      // Build data for Chart.js
+      // -------------------------------------------------------------
+      const datasets = modelNames.map(model => {
+        const data = benchmarks.map(b => {
+          const rec = results[model][b.key];
+          const score = b.getScore(rec);
+          // Round to one decimal for display
+          return score !== null ? Math.round(score * 10) / 10 : null;
+        });
+        return {
+          label: model,
+          data: data,
+          backgroundColor: modelColors[model],
+          borderColor: modelColors[model],
+          borderWidth: 1,
+          // hide bar if value is null
+          hidden: data.every(v => v === null),
+        };
+      });
+
+      // -------------------------------------------------------------
+      // Determine top‑3 models for each benchmark
+      // -------------------------------------------------------------
+      const topPerBenchmark = benchmarks.map((b, idx) => {
+        const scores = modelNames
+          .map(m => {
+            const rec = results[m][b.key];
+            const score = b.getScore(rec);
+            return {model: m, score: score !== null ? Math.round(score * 10) / 10 : null};
+          })
+          .filter(o => o.score !== null);
+        scores.sort((a, b) => b.score - a.score);
+        return scores.slice(0, 3);
+      });
+
+      // -------------------------------------------------------------
+      // Render the chart
+      // -------------------------------------------------------------
+      const ctx = document.getElementById("benchmarkChart").getContext("2d");
+      const chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: benchmarks.map(b => b.name),
+          datasets: datasets,
+        },
+        options: {
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: {
+                generateLabels: function (chart) {
+                  // Show only models that actually have at least one score
+                  return chart.data.datasets
+                    .filter(ds => !ds.hidden)
+                    .map(ds => ({
+                      text: ds.label,
+                      fillStyle: ds.backgroundColor,
+                      strokeStyle: ds.borderColor,
+                      hidden: !chart.isDatasetVisible(ds.index),
+                      datasetIndex: ds.index,
+                    }));
+                },
+              },
+            },
+            datalabels: {
+              anchor: "end",
+              align: "top",
+              formatter: value => (value !== null ? value + "%" : ""),
+              color: "#000",
+              font: {weight: "bold"},
+            },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const val = ctx.parsed.y;
+                  return val !== null
+                    ? `${ctx.dataset.label}: ${val}%`
+                    : `${ctx.dataset.label}: N/A`;
+                },
+              },
+            },
+          },
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {display: true, text: "Score (0‑100)"},
+            },
+          },
+        },
+        plugins: [ChartDataLabels],
+      });
+
+      // -------------------------------------------------------------
+      // Render Top‑3 lists below the chart
+      // -------------------------------------------------------------
+      function renderTopList(containerId, benchmarkName, topModels) {
+        const container = document.getElementById(containerId);
+        const title = document.createElement("h3");
+        title.textContent = `Top 3 – ${benchmarkName}`;
+        const list = document.createElement("ol");
+        topModels.forEach(item => {
+          const li = document.createElement("li");
+          li.style.color = modelColors[item.model];
+          li.textContent = `${item.model} – ${item.score}%`;
+          list.appendChild(li);
+        });
+        container.appendChild(title);
+        container.appendChild(list);
+      }
+
+      renderTopList("topAider", benchmarks[0].name, topPerBenchmark[0]);
+      renderTopList("topKcores", benchmarks[1].name, topPerBenchmark[1]);
+    </script>
+  </body>
+</html>

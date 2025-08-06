@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Model Benchmark Results</title>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <!-- DataLabels plugin (for labeling top‑3 bars) -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 20px;
+        background: #f9f9f9;
+      }
+      h1 {
+        text-align: center;
+      }
+      #chartContainer {
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+      canvas {
+        background: #fff;
+        border: 1px solid #ddd;
+      }
+      .legend-item {
+        display: inline-flex;
+        align-items: center;
+        margin-right: 15px;
+      }
+      .legend-color {
+        width: 12px;
+        height: 12px;
+        margin-right: 5px;
+        border-radius: 2px;
+      }
+      #customLegend {
+        text-align: center;
+        margin-top: 10px;
+      }
+    </style>
+    <!-- Load the data file (same directory) -->
+    <script src="results.js"></script>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <div id="chartContainer">
+      <canvas id="benchmarkChart"></canvas>
+      <div id="customLegend"></div>
+    </div>
+
+    <script>
+      // -------------------------------------------------------------------------
+      // 1️⃣  Prepare the data
+      // -------------------------------------------------------------------------
+      const benchmarkNames = {
+        aider_polyglot: "Aider polyglot coding leaderboard",
+        kcores_llm_arena: "KCORES LLM Arena",
+      };
+
+      // Normalisation helpers
+      const normalizeKcores = value => (value / 400) * 100; // 0‑400 → 0‑100
+
+      // Collect all models
+      const modelNames = Object.keys(results);
+
+      // Build a map: model -> [score for aider, score for kcores]
+      const scoresByModel = {};
+      modelNames.forEach(model => {
+        const entry = results[model];
+        const aiderScore = entry.aider_polyglot?.percent_correct ?? null; // already 0‑100
+        const kcoresRaw = entry.kcores_llm_arena?.normalized_score ?? null;
+        const kcoresScore = kcoresRaw !== null ? normalizeKcores(kcoresRaw) : null;
+        scoresByModel[model] = [aiderScore, kcoresScore];
+      });
+
+      // -------------------------------------------------------------------------
+      // 2️⃣  Determine top‑3 models for each benchmark (for labeling)
+      // -------------------------------------------------------------------------
+      const topIndices = [[], []]; // [benchmark][modelIndex] = true if top‑3
+      const benchmarksCount = 2;
+
+      for (let b = 0; b < benchmarksCount; b++) {
+        // Create an array of {model, score}
+        const arr = modelNames
+          .map((m, i) => ({
+            model: m,
+            score: scoresByModel[m][b],
+            idx: i,
+          }))
+          .filter(o => o.score !== null);
+
+        // Sort descending by score
+        arr.sort((a, b) => b.score - a.score);
+
+        // Mark the top three
+        arr.slice(0, 3).forEach(o => (topIndices[b][o.idx] = true));
+      }
+
+      // -------------------------------------------------------------------------
+      // 3️⃣  Assign a colour to each model (deterministic palette)
+      // -------------------------------------------------------------------------
+      const palette = [
+        "#4e79a7",
+        "#f28e2b",
+        "#e15759",
+        "#76b7b2",
+        "#59a14f",
+        "#edc949",
+        "#af7aa1",
+        "#ff9da7",
+        "#9c755f",
+        "#bab0ab",
+        "#86bcbe",
+        "#ae8b00",
+        "#ffbe7d",
+        "#d37295",
+        "#8cd17d",
+        "#b6992d",
+        "#499894",
+        "#c5b0d5",
+        "#ff9da7",
+        "#d4a0a0",
+      ];
+      const modelColors = {};
+      modelNames.forEach((m, i) => {
+        modelColors[m] = palette[i % palette.length];
+      });
+
+      // -------------------------------------------------------------------------
+      // 4️⃣  Build the Chart.js datasets
+      // -------------------------------------------------------------------------
+      const datasets = modelNames.map((model, i) => ({
+        label: model,
+        data: scoresByModel[model],
+        backgroundColor: modelColors[model],
+        borderColor: "#000",
+        borderWidth: 1,
+        // highlight top‑3 bars with a thicker border
+        borderWidth: ctx => {
+          const datasetIndex = ctx.datasetIndex;
+          const dataIndex = ctx.dataIndex;
+          // ctx.chart is the chart instance
+          const chart = ctx.chart;
+          const modelIdx = modelNames.indexOf(chart.data.datasets[datasetIndex].label);
+          return topIndices[dataIndex][modelIdx] ? 3 : 1;
+        },
+      }));
+
+      // -------------------------------------------------------------------------
+      // 5️⃣  Render the chart
+      // -------------------------------------------------------------------------
+      const ctx = document.getElementById("benchmarkChart").getContext("2d");
+
+      const benchmarkChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: [benchmarkNames.aider_polyglot, benchmarkNames.kcores_llm_arena],
+          datasets: datasets,
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              stacked: false,
+              title: {
+                display: true,
+                text: "Benchmark",
+              },
+            },
+            y: {
+              stacked: false,
+              min: 0,
+              max: 100,
+              ticks: {
+                stepSize: 10,
+              },
+              title: {
+                display: true,
+                text: "Score (0‑100)",
+              },
+            },
+          },
+          plugins: {
+            legend: {
+              display: false, // we will create a custom legend below
+            },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) {
+                  const model = ctx.dataset.label;
+                  const score = ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) : "N/A";
+                  return `${model}: ${score}`;
+                },
+              },
+            },
+            datalabels: {
+              // Show model name only on top‑3 bars
+              display: ctx => {
+                const dataIndex = ctx.dataIndex;
+                const modelIdx = modelNames.indexOf(ctx.dataset.label);
+                return topIndices[dataIndex][modelIdx] === true;
+              },
+              align: "end",
+              anchor: "end",
+              formatter: (value, ctx) => ctx.dataset.label,
+              font: {
+                weight: "bold",
+                size: 10,
+              },
+              color: "#000",
+              backgroundColor: "rgba(255,255,255,0.8)",
+              borderRadius: 3,
+              padding: 2,
+            },
+          },
+        },
+        plugins: [ChartDataLabels],
+      });
+
+      // -------------------------------------------------------------------------
+      // 6️⃣  Build a custom colour legend (makes colours easy to read)
+      // -------------------------------------------------------------------------
+      const legendContainer = document.getElementById("customLegend");
+      modelNames.forEach(m => {
+        const item = document.createElement("div");
+        item.className = "legend-item";
+        const swatch = document.createElement("div");
+        swatch.className = "legend-color";
+        swatch.style.backgroundColor = modelColors[m];
+        const label = document.createElement("span");
+        label.textContent = m;
+        item.appendChild(swatch);
+        item.appendChild(label);
+        legendContainer.appendChild(item);
+      });
+
+      // -------------------------------------------------------------------------
+      // 7️⃣  Make the canvas fill its container nicely
+      // -------------------------------------------------------------------------
+      function resizeChart() {
+        const container = document.getElementById("chartContainer");
+        benchmarkChart.resize();
+      }
+      window.addEventListener("resize", resizeChart);
+    </script>
+  </body>
+</html>
