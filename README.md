@@ -4,41 +4,11 @@ A project by [16x Eval](https://eval.16x.engineer/) to evaluate different models
 
 For evaluation rubrics, check the [eval-data](https://github.com/paradite/eval-data) repo. [Direct link](https://github.com/paradite/eval-data/blob/main/projects/visualization/RUBRICS.md).
 
-Rubrics is reproduced below for convenience:
-
-```
-Criteria:
-- Side-by-side visualization without label: 8.5/10
-- Baseline visualization without label: 8/10
-- Horizontal bar chart (if cannot fit in the page): 7.5/10
-- Has major formatting issues: 5/10
-- Did not run / Code error: 1/10
-
-Additional components:
-- Side-by-side visualization
-  - Color by benchmark: No effect on rating
-  - Color by model: -0.5 rating
-  - Alternative ways to differentiate benchmarks: +0.5 rating
-- Clear labels on bar chart: +0.5 rating
-- Poor color choice: -0.5 rating
-- Minor formatting issues: -0.5 rating
-```
-
 ## Results
-
-### GPT-4.1
-
-> Human rating: 8.5/10
-
-GPT-4.1 generated a visualization with clear labels on the bar chart and legend:
-
-![GPT-4.1](output/gpt-4.1.png)
-
-Source code: [gpt-4.1.html](output/gpt-4.1.html)
 
 ### Claude Opus 4
 
-> Human rating: 8.5/10
+> Human rating: 9.25/10
 
 Claude 4 Opus generated a great looking visualization, with side-by-side comparison colored by benchmark and a legend. But it lacked labels on the bar chart:
 
@@ -48,33 +18,55 @@ Source code: [claude-opus-4.html](output/claude-opus-4.html)
 
 ### Claude Sonnet 4
 
-> Human rating: 8.5/10
+> Human rating: 9.25/10
 
-Claude Sonnet 4 generated a visualization that is very similar to Claude 4 Opus:
+Claude Sonnet 4 generated a visually pleasing visualization that is very similar to Claude 4 Opus:
 
 ![claude-sonnet-4](output/claude-sonnet-4.png)
 
 Source code: [claude-sonnet-4.html](output/claude-sonnet-4.html)
 
-### Gemini 2.5 Pro (GA version)
+### Grok-4
 
-> Human rating: 8.5/10
+> Human rating: 9.25/10
 
-Gemini 2.5 Pro (GA version) generated a visualization that is great looking with clear labels on the bar chart.
+Grok-4 generated a visually pleasing visualization with side-by-side comparison of two benchmarks for each model, with clear labels on the ranking.
 
-![gemini-2.5-pro-ga](output/gemini-2.5-pro-ga.png)
+The colors were by model instead of by benchmark.
+
+![grok-4](output/grok-4.png)
+
+Source code: [grok-4.html](output/grok-4.html)
 
 ### Kimi K2
 
-> Human rating: 8.5/10
+> Human rating: 9.25/10
 
-Kimi K2 generated a side-by-side visualization without labels on the bar chart.
+Kimi K2 generated a visually pleasing side-by-side visualization without labels on the bar chart.
 
 Although the bars are colored by model instead of by benchmark, different benchmarks have different alpha intensity, which is a nice touch.
 
 ![kimi-k2](output/kimi-k2-0711-preview.png)
 
 Source code: [kimi-k2-0711-preview.html](output/kimi-k2-0711-preview.html)
+
+### GPT-4.1
+
+> Human rating: 8.75/10
+
+GPT-4.1 generated a visually pleasing visualization with clear labels on the bar chart and legend:
+
+![GPT-4.1](output/gpt-4.1.png)
+
+Source code: [gpt-4.1.html](output/gpt-4.1.html)
+
+### Gemini 2.5 Pro (GA version)
+
+> Human rating: 8.5/10
+
+Gemini 2.5 Pro (GA version) generated a visually pleasing visualization that is great looking with clear labels on the bar chart.
+
+![gemini-2.5-pro-ga](output/gemini-2.5-pro-ga.png)
 
 ### GPT OSS 120B
 
@@ -105,18 +97,6 @@ The Gemini 2.5 Pro Preview [06-05] generated a visualization that is similar to 
 ![gemini-2.5-pro-preview-06-05](output/gemini-2.5-pro-preview-06-05.png)
 
 Source code: [gemini-2.5-pro-preview-06-05.html](output/gemini-2.5-pro-preview-06-05.html)
-
-### Grok-4
-
-> Human rating: 8/10
-
-Grok-4 generated a visualization with side-by-side comparison of two benchmarks for each model, with clear labels on the ranking.
-
-However, the colors were by model instead of by benchmark, which is not very helpful.
-
-![grok-4](output/grok-4.png)
-
-Source code: [grok-4.html](output/grok-4.html)
 
 ### Claude 3.7
 
