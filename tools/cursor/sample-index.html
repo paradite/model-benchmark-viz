@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Model Benchmark Results</title>
+    <script src="results.js"></script>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <div id="models"></div>
+    <div id="raw-data"></div>
+    <script>
+      const modelsElm = document.getElementById("models");
+      modelsElm.innerHTML = models.join(", ");
+      console.log(modelsElm);
+      const rawData = document.getElementById("raw-data");
+      rawData.innerHTML = JSON.stringify(results, null, 2);
+    </script>
+  </body>
+</html>

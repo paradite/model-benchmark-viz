@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Model Benchmark Results</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+    <!-- Data source -->
+    <script src="results.js"></script>
+    <!-- Chart.js + DataLabels plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --panel: #111827;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --accent: #22d3ee;
+        --grid: rgba(255, 255, 255, 0.08);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell,
+          Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        background: radial-gradient(1200px 600px at 20% -20%, #1f2937, transparent 50%), var(--bg);
+        color: var(--text);
+        line-height: 1.45;
+      }
+      header {
+        padding: 24px 16px 0;
+        text-align: center;
+      }
+      header h1 {
+        margin: 0 0 8px 0;
+        font-size: clamp(20px, 3vw, 28px);
+        font-weight: 800;
+        letter-spacing: 0.2px;
+      }
+      header p {
+        margin: 0 auto;
+        color: var(--muted);
+        max-width: 900px;
+        font-size: 14px;
+      }
+      .wrapper {
+        max-width: 1200px;
+        margin: 16px auto 40px;
+        padding: 0 16px 24px;
+      }
+      .card {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+      }
+      .chart-head {
+        padding: 14px 16px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .chart-head .meta {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .chart-container {
+        padding: 8px 12px 0;
+        height: 520px;
+      }
+      .note {
+        padding: 8px 16px 14px;
+        color: var(--muted);
+        font-size: 12px;
+        border-top: 1px dashed rgba(255, 255, 255, 0.08);
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 12px;
+        color: var(--text);
+      }
+      .medal {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        margin-right: 4px;
+      }
+      .medal.gold {
+        background: linear-gradient(180deg, #ffd700, #e6c200);
+      }
+      .medal.silver {
+        background: linear-gradient(180deg, #c0c0c0, #a8a8a8);
+      }
+      .medal.bronze {
+        background: linear-gradient(180deg, #cd7f32, #b36e2b);
+      }
+      .top3 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(260px, 1fr));
+        gap: 12px;
+        padding: 12px 16px 16px;
+        border-top: 1px dashed rgba(255, 255, 255, 0.08);
+      }
+      @media (max-width: 720px) {
+        .chart-container {
+          height: 600px;
+        }
+        .top3 {
+          grid-template-columns: 1fr;
+        }
+      }
+      .top3 .section {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 10px 12px;
+      }
+      .top3 h3 {
+        margin: 0 0 8px;
+        font-size: 13px;
+        color: var(--text);
+        letter-spacing: 0.2px;
+      }
+      .top3 ol {
+        margin: 0;
+        padding-left: 16px;
+        font-size: 13px;
+        color: var(--text);
+      }
+      .top3 li {
+        margin: 4px 0;
+      }
+      canvas {
+        user-select: none;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Model Benchmark Results</h1>
+      <p>
+        Combined visualization of normalized model performance across benchmarks. Aider polyglot
+        uses percent correct (already 0–100). KCORES LLM Arena uses normalized_score scaled to 0–100
+        (score ÷ 400 × 100).
+      </p>
+    </header>
+
+    <div class="wrapper">
+      <div class="card">
+        <div class="chart-head">
+          <div class="meta">Bars are grouped by benchmark and colored by model.</div>
+          <div class="pill">Scale: 0–100</div>
+        </div>
+        <div class="chart-container">
+          <canvas
+            id="benchChart"
+            aria-label="Model performance across benchmarks (normalized)"
+          ></canvas>
+        </div>
+        <div class="note">
+          <span class="pill"><span class="medal gold"></span>Top 1</span>
+          <span class="pill"><span class="medal silver"></span>Top 2</span>
+          <span class="pill"><span class="medal bronze"></span>Top 3</span>
+          <span class="pill">Click legend to toggle models</span>
+        </div>
+        <div
+          class="top3"
+          id="top3"
+        ></div>
+      </div>
+    </div>
+
+    <noscript> Please enable JavaScript to view the visualization. </noscript>
+
+    <script>
+      // Ensure results are loaded
+      if (typeof results === "undefined") {
+        document.body.innerHTML =
+          '<p style="color:#ef4444;padding:16px;font-family:monospace;">Error: results.js not loaded.</p>';
+      }
+
+      // Friendly benchmark definitions
+      const BENCHMARKS = [
+        {
+          key: "aider_polyglot",
+          name: "Aider polyglot coding leaderboard",
+          metricKey: "percent_correct",
+          normalize: x => x, // already 0-100
+        },
+        {
+          key: "kcores_llm_arena",
+          name: "KCORES LLM Arena",
+          metricKey: "normalized_score",
+          normalize: x => (x == null ? null : (x / 400) * 100),
+        },
+      ];
+
+      // Models present
+      const modelNames = Object.keys(results);
+
+      // Deterministic color per model
+      function colorFromString(str, alpha = 0.92) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+          hash = (hash << 5) - hash + str.charCodeAt(i);
+          hash |= 0;
+        }
+        const hue = ((hash % 360) + 360) % 360;
+        const sat = 70;
+        const light = 55;
+        return `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`;
+      }
+
+      // Build datasets per model across benchmarks
+      const datasets = modelNames.map(model => {
+        const values = BENCHMARKS.map(b => {
+          const bench = results[model][b.key];
+          if (!bench) return null;
+          const raw = bench[b.metricKey];
+          if (raw == null || isNaN(raw)) return null;
+          const norm = b.normalize(raw);
+          if (norm == null || isNaN(norm)) return null;
+          return Math.max(0, Math.min(100, norm));
+        });
+        const color = colorFromString(model);
+        return {
+          label: model,
+          data: values,
+          backgroundColor: color,
+          borderColor: color,
+          borderWidth: 1,
+          hoverBorderWidth: 2,
+        };
+      });
+
+      // Find Top-3 per benchmark (by normalized score)
+      // Map: bIdx -> Map(datasetIndex -> rank[1..3])
+      const topRanks = new Map();
+      BENCHMARKS.forEach((b, bIdx) => {
+        const arr = datasets
+          .map((ds, dIdx) => ({dIdx, value: ds.data[bIdx]}))
+          .filter(d => d.value != null);
+        arr.sort((a, b) => b.value - a.value);
+        const map = new Map();
+        const cap = Math.min(3, arr.length);
+        for (let i = 0; i < cap; i++) {
+          map.set(arr[i].dIdx, i + 1);
+        }
+        topRanks.set(bIdx, map);
+      });
+
+      // Register plugins
+      Chart.register(ChartDataLabels);
+
+      const ctx = document.getElementById("benchChart").getContext("2d");
+
+      const chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: BENCHMARKS.map(b => b.name),
+          datasets: datasets,
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {duration: 700},
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: {
+                color: "#e5e7eb",
+                boxWidth: 14,
+                boxHeight: 14,
+                usePointStyle: true,
+                pointStyle: "rectRounded",
+              },
+            },
+            title: {
+              display: true,
+              text: "Normalized model performance across benchmarks",
+              color: "#e5e7eb",
+              font: {weight: "bold", size: 16},
+              padding: {bottom: 6},
+            },
+            subtitle: {
+              display: true,
+              text: "Aider polyglot: percent correct • KCORES LLM Arena: normalized_score scaled to 0–100",
+              color: "#9ca3af",
+              padding: {bottom: 8},
+            },
+            tooltip: {
+              backgroundColor: "rgba(17,24,39,0.95)",
+              titleColor: "#fff",
+              bodyColor: "#e5e7eb",
+              borderColor: "rgba(255,255,255,0.1)",
+              borderWidth: 1,
+              callbacks: {
+                title: items => items[0].label,
+                label: context => {
+                  const model = context.dataset.label;
+                  const bIdx = context.dataIndex;
+                  const value = context.raw;
+                  if (value == null) return model + ": no data";
+                  const rank = topRanks.get(bIdx)?.get(context.datasetIndex);
+                  const medal = rank === 1 ? "🥇 " : rank === 2 ? "🥈 " : rank === 3 ? "🥉 " : "";
+                  return `${medal}${model}: ${value.toFixed(1)}`;
+                },
+              },
+            },
+            datalabels: {
+              // Only show labels for the top 3 of each benchmark
+              formatter: (value, ctx) => {
+                if (value == null) return "";
+                const rank = topRanks.get(ctx.dataIndex)?.get(ctx.datasetIndex);
+                if (!rank) return "";
+                const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉";
+                return `${medal} ${value.toFixed(1)}`;
+              },
+              color: ctx => {
+                const rank = topRanks.get(ctx.dataIndex)?.get(ctx.datasetIndex);
+                return rank ? "#0b0b0b" : "transparent";
+              },
+              backgroundColor: ctx => {
+                const rank = topRanks.get(ctx.dataIndex)?.get(ctx.datasetIndex);
+                if (rank === 1) return "rgba(255,215,0,0.95)"; // gold
+                if (rank === 2) return "rgba(192,192,192,0.95)"; // silver
+                if (rank === 3) return "rgba(205,127,50,0.95)"; // bronze
+                return "transparent";
+              },
+              borderRadius: 6,
+              padding: {top: 3, right: 6, bottom: 3, left: 6},
+              font: {weight: "bold", size: 11},
+              anchor: "end",
+              align: "start",
+              offset: -6,
+              clamp: true,
+            },
+          },
+          scales: {
+            x: {
+              grid: {color: "transparent"},
+              ticks: {color: "#d1d5db"},
+            },
+            y: {
+              beginAtZero: true,
+              suggestedMax: 100,
+              grid: {color: "rgba(255,255,255,0.08)"},
+              ticks: {
+                color: "#9ca3af",
+                callback: v => v,
+              },
+              title: {
+                display: true,
+                text: "Normalized score (0–100)",
+                color: "#d1d5db",
+              },
+            },
+          },
+        },
+      });
+
+      // Accessible Top 3 summary for each benchmark
+      function renderTop3() {
+        const container = document.getElementById("top3");
+        container.innerHTML = "";
+        BENCHMARKS.forEach((b, bIdx) => {
+          const rows = datasets
+            .map(ds => ({model: ds.label, score: ds.data[bIdx]}))
+            .filter(r => r.score != null)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 3);
+
+          const sec = document.createElement("div");
+          sec.className = "section";
+          const h = document.createElement("h3");
+          h.textContent = `${b.name} — Top 3`;
+          const ol = document.createElement("ol");
+          rows.forEach((r, i) => {
+            const li = document.createElement("li");
+            const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉";
+            li.textContent = `${medal} ${r.model}: ${r.score.toFixed(1)}`;
+            ol.appendChild(li);
+          });
+          sec.appendChild(h);
+          sec.appendChild(ol);
+          container.appendChild(sec);
+        });
+      }
+      renderTop3();
+    </script>
+  </body>
+</html>
