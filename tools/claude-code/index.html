@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Model Benchmark Results</title>
+    <script src="results.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      }
+      h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+      }
+      .charts-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 30px;
+        justify-content: center;
+      }
+      .chart-wrapper {
+        background-color: #f9f9f9;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+        min-width: 500px;
+        flex: 1;
+      }
+      .chart-title {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        text-align: center;
+        color: #444;
+      }
+      canvas {
+        max-height: 400px;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-top: 20px;
+        justify-content: center;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        font-size: 12px;
+      }
+      .legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 5px;
+      }
+      .top-model {
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Model Benchmark Results</h1>
+      <div class="charts-container">
+        <div class="chart-wrapper">
+          <div class="chart-title">Aider polyglot coding leaderboard</div>
+          <canvas id="aiderChart"></canvas>
+        </div>
+        <div class="chart-wrapper">
+          <div class="chart-title">KCORES LLM Arena</div>
+          <canvas id="kcoresChart"></canvas>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <script>
+      // Color palette for models
+      const modelColors = {
+        "o3 (high)": "#FF6B6B",
+        "o4-mini (high)": "#4ECDC4",
+        "GPT-4.1": "#45B7D1",
+        "Claude 3.5 Sonnet": "#96CEB4",
+        "Claude 3.7 Sonnet (Thinking)": "#FFEAA7",
+        "Gemini 2.5 Pro": "#DDA0DD",
+        "DeepSeek R1": "#98D8C8",
+        "DeepSeek V3 (0324)": "#F7DC6F",
+        "Grok 3 Beta": "#BB8FCE"
+      };
+
+      function normalizeKcoresScore(score) {
+        // Normalize from 0-400 range to 0-100 range
+        return (score / 400) * 100;
+      }
+
+      function processAiderData() {
+        const data = [];
+        const labels = [];
+        const colors = [];
+        
+        Object.entries(results).forEach(([model, benchmarks]) => {
+          if (benchmarks.aider_polyglot) {
+            data.push(benchmarks.aider_polyglot.percent_correct);
+            labels.push(model);
+            colors.push(modelColors[model] || '#999999');
+          }
+        });
+
+        // Sort by score descending
+        const sorted = data.map((score, i) => ({ score, label: labels[i], color: colors[i] }))
+          .sort((a, b) => b.score - a.score);
+
+        return {
+          labels: sorted.map(item => item.label),
+          data: sorted.map(item => item.score),
+          colors: sorted.map(item => item.color),
+          top3: sorted.slice(0, 3).map(item => item.label)
+        };
+      }
+
+      function processKcoresData() {
+        const data = [];
+        const labels = [];
+        const colors = [];
+        
+        Object.entries(results).forEach(([model, benchmarks]) => {
+          if (benchmarks.kcores_llm_arena) {
+            data.push(normalizeKcoresScore(benchmarks.kcores_llm_arena.normalized_score));
+            labels.push(model);
+            colors.push(modelColors[model] || '#999999');
+          }
+        });
+
+        // Sort by score descending
+        const sorted = data.map((score, i) => ({ score, label: labels[i], color: colors[i] }))
+          .sort((a, b) => b.score - a.score);
+
+        return {
+          labels: sorted.map(item => item.label),
+          data: sorted.map(item => item.score),
+          colors: sorted.map(item => item.color),
+          top3: sorted.slice(0, 3).map(item => item.label)
+        };
+      }
+
+      function createChart(canvasId, title, processedData) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        
+        // Add top 3 indicators to labels
+        const labelsWithTop3 = processedData.labels.map(label => {
+          const rank = processedData.top3.indexOf(label) + 1;
+          return rank > 0 ? `#${rank} ${label}` : label;
+        });
+
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labelsWithTop3,
+            datasets: [{
+              label: 'Score',
+              data: processedData.data,
+              backgroundColor: processedData.colors,
+              borderColor: processedData.colors,
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return `Score: ${context.parsed.y.toFixed(1)}`;
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+                title: {
+                  display: true,
+                  text: 'Normalized Score (0-100)'
+                }
+              },
+              x: {
+                ticks: {
+                  maxRotation: 45,
+                  minRotation: 45
+                }
+              }
+            }
+          }
+        });
+      }
+
+      function createLegend() {
+        const legendEl = document.getElementById('legend');
+        Object.entries(modelColors).forEach(([model, color]) => {
+          if (results[model]) {
+            const item = document.createElement('div');
+            item.className = 'legend-item';
+            
+            const colorBox = document.createElement('div');
+            colorBox.className = 'legend-color';
+            colorBox.style.backgroundColor = color;
+            
+            const label = document.createElement('span');
+            label.textContent = model;
+            
+            item.appendChild(colorBox);
+            item.appendChild(label);
+            legendEl.appendChild(item);
+          }
+        });
+      }
+
+      // Initialize charts when page loads
+      window.addEventListener('DOMContentLoaded', function() {
+        const aiderData = processAiderData();
+        const kcoresData = processKcoresData();
+        
+        createChart('aiderChart', 'Aider polyglot coding leaderboard', aiderData);
+        createChart('kcoresChart', 'KCORES LLM Arena', kcoresData);
+        createLegend();
+      });
+    </script>
+  </body>
+</html>

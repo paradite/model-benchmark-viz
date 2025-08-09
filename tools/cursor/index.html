@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+    <title>Model Benchmark Results</title>
+    <!-- Data -->
+    <script src="results.js"></script>
+    <!-- Chart.js and DataLabels plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --panel: #111827;
+        --text: #e5e7eb;
+        --muted: #94a3b8;
+        --axis: #374151;
+        --grid: #1f2937;
+        --chip-bg: #0b1220;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica,
+          Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      }
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+      }
+      h1 {
+        font-size: 24px;
+        line-height: 1.25;
+        margin: 8px 0 16px;
+      }
+      .subtitle {
+        color: var(--muted);
+        margin-bottom: 24px;
+        font-size: 14px;
+      }
+      .panel {
+        background: var(--panel);
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 280px;
+        gap: 16px;
+      }
+      @media (max-width: 980px) {
+        .row {
+          grid-template-columns: 1fr;
+        }
+      }
+      .legend {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 8px 12px;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        background: var(--chip-bg);
+        border-radius: 8px;
+        border: 1px solid #0d1a2b;
+      }
+      .swatch {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+      }
+      .side {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .side .card {
+        background: var(--chip-bg);
+        border: 1px solid #0d1a2b;
+        border-radius: 10px;
+        padding: 12px 12px 8px;
+      }
+      .card h3 {
+        font-size: 14px;
+        margin: 0 0 8px;
+        color: var(--muted);
+      }
+      .top-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .top-list li {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 14px;
+      }
+      .small-note {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      canvas {
+        width: 100% !important;
+        height: 100% !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Model Benchmark Results</h1>
+      <div class="subtitle">
+        Comparing primary metrics across benchmarks on a normalized 0–100 scale.
+      </div>
+
+      <div
+        class="panel"
+        style="margin-bottom: 16px"
+      >
+        <div
+          id="model-legend"
+          class="legend"
+        ></div>
+      </div>
+
+      <div class="row">
+        <div
+          class="panel"
+          style="min-height: 460px; height: 60vh"
+        >
+          <canvas id="chart"></canvas>
+        </div>
+
+        <div class="side">
+          <div class="card">
+            <h3>Top 3 — Aider polyglot coding leaderboard</h3>
+            <ol
+              id="top-aider"
+              class="top-list"
+            ></ol>
+            <div class="small-note">Metric: percent_correct</div>
+          </div>
+          <div class="card">
+            <h3>Top 3 — KCORES LLM Arena</h3>
+            <ol
+              id="top-kcores"
+              class="top-list"
+            ></ol>
+            <div class="small-note">Metric: normalized_score → scaled to 0–100</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Friendly names for benchmarks
+      const FRIENDLY = {
+        aider_polyglot: "Aider polyglot coding leaderboard",
+        kcores_llm_arena: "KCORES LLM Arena",
+      };
+
+      // Color palette: consistent color per model across datasets
+      function colorForModel(index, alpha = 0.8) {
+        const hue = Math.round((index / Math.max(models.length, 1)) * 300);
+        return `hsla(${hue}, 65%, 50%, ${alpha})`;
+      }
+
+      // Extract and normalize data to 0-100
+      const aiderValues = models.map(m => {
+        const v = results[m]?.aider_polyglot?.percent_correct;
+        return typeof v === "number" ? v : null;
+      });
+      const kcoresValues = models.map(m => {
+        const raw = results[m]?.kcores_llm_arena?.normalized_score;
+        return typeof raw === "number" ? raw / 4 : null; // 0-400 → 0-100
+      });
+
+      function computeTop3(values) {
+        const pairs = values.map((v, i) => ({i, v})).filter(p => typeof p.v === "number");
+        pairs.sort((a, b) => b.v - a.v);
+        const top = pairs.slice(0, 3);
+        const medalByIndex = {};
+        const medals = ["🥇", "🥈", "🥉"];
+        top.forEach((p, rank) => {
+          medalByIndex[p.i] = medals[rank];
+        });
+        return {
+          medalByIndex,
+          topList: top.map((p, rank) => ({
+            rank: rank + 1,
+            model: models[p.i],
+            value: p.v,
+          })),
+        };
+      }
+
+      const topAider = computeTop3(aiderValues);
+      const topKcores = computeTop3(kcoresValues);
+
+      // Render top lists
+      function renderTopList(elmId, items, suffix = "%") {
+        const elm = document.getElementById(elmId);
+        elm.innerHTML = items
+          .map(it => {
+            const emoji = it.rank === 1 ? "🥇" : it.rank === 2 ? "🥈" : "🥉";
+            const valueStr = `${it.value.toFixed(1)}${suffix}`;
+            return `<li><span>${emoji} ${it.model}</span><strong>${valueStr}</strong></li>`;
+          })
+          .join("");
+      }
+      renderTopList("top-aider", topAider.topList);
+      renderTopList("top-kcores", topKcores.topList);
+
+      // Model color legend
+      const legendElm = document.getElementById("model-legend");
+      legendElm.innerHTML = models
+        .map(
+          (m, i) => `
+            <div class="legend-item">
+              <span class="swatch" style="background: ${colorForModel(i, 0.85)}"></span>
+              <span>${m}</span>
+            </div>`,
+        )
+        .join("");
+
+      // Chart.js setup
+      const ctx = document.getElementById("chart").getContext("2d");
+
+      const datasets = [
+        {
+          key: "aider_polyglot",
+          label: FRIENDLY.aider_polyglot,
+          data: aiderValues,
+          backgroundColor: models.map((_, i) => colorForModel(i, 0.8)),
+          borderColor: models.map((_, i) => colorForModel(i, 1)),
+          borderWidth: 1.5,
+          order: 1,
+        },
+        {
+          key: "kcores_llm_arena",
+          label: FRIENDLY.kcores_llm_arena,
+          data: kcoresValues,
+          backgroundColor: models.map((_, i) => colorForModel(i, 0.35)),
+          borderColor: models.map((_, i) => colorForModel(i, 0.95)),
+          borderWidth: 1.5,
+          order: 2,
+        },
+      ];
+
+      const chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: models,
+          datasets: datasets,
+        },
+        options: {
+          indexAxis: "y", // horizontal bars for readability
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              suggestedMin: 0,
+              suggestedMax: 100,
+              grid: {color: "#1f2937"},
+              border: {color: "#1f2937"},
+              ticks: {
+                color: "#b3c0d6",
+                callback: v => v + "%",
+              },
+              title: {
+                display: true,
+                text: "Normalized score (0–100)",
+                color: "#94a3b8",
+              },
+            },
+            y: {
+              grid: {color: "#0f172a"},
+              border: {color: "#1f2937"},
+              ticks: {color: "#e5e7eb"},
+            },
+          },
+          plugins: {
+            legend: {
+              labels: {color: "#e5e7eb"},
+            },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const modelIndex = ctx.dataIndex;
+                  const dsKey = datasets[ctx.datasetIndex].key;
+                  const label = datasets[ctx.datasetIndex].label;
+                  const normalized = ctx.raw;
+                  let s = `${label}: ${
+                    typeof normalized === "number" ? normalized.toFixed(1) : "-"
+                  }%`;
+                  if (dsKey === "kcores_llm_arena") {
+                    const raw = results[models[modelIndex]]?.kcores_llm_arena?.normalized_score;
+                    if (typeof raw === "number") s += ` (raw ${raw.toFixed(1)} / 400)`;
+                  }
+                  return s;
+                },
+              },
+            },
+            datalabels: {
+              color: "#ffffff",
+              align: "right",
+              anchor: "end",
+              offset: 4,
+              font: {weight: "700"},
+              formatter: (value, context) => {
+                if (value == null) return null;
+                const dsKey = datasets[context.datasetIndex].key;
+                const idx = context.dataIndex;
+                if (dsKey === "aider_polyglot") {
+                  return topAider.medalByIndex[idx] || null;
+                } else if (dsKey === "kcores_llm_arena") {
+                  return topKcores.medalByIndex[idx] || null;
+                }
+                return null;
+              },
+            },
+          },
+          layout: {padding: {right: 12}},
+        },
+        plugins: [ChartDataLabels],
+      });
+    </script>
+  </body>
+</html>
