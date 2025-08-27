@@ -202,6 +202,16 @@ We gave it a second try, but it generated something very similar again.
 
 Source code: [horizon-alpha.html](output/horizon-alpha.html)
 
+### DeepSeek-V3.1
+
+DeepSeek-V3.1 generated generated an unusual visualzation with a vertical line and two ends representing two benchmarks. The visualization also had some formatting issues that makes it hard to read.
+
+We gave it a second try, but it generated something very similar again.
+
+![deepseek-v3.1](output/deepseek-v3.1.png)
+
+Source code: [deepseek-v3.1.html](output/deepseek-v3.1.html)
+
 ### Qwen3 235B A22B
 
 > Human rating: 5/10

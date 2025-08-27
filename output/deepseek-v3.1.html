@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Model Benchmark Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.min.js"></script>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f8f9fa;
+        color: #333;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background-color: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 30px;
+        color: #2c3e50;
+        font-weight: 600;
+      }
+      .chart-container {
+        position: relative;
+        height: 500px;
+        margin-bottom: 40px;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin: 20px 0;
+        justify-content: center;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        margin-right: 15px;
+      }
+      .legend-color {
+        width: 16px;
+        height: 16px;
+        margin-right: 8px;
+        border-radius: 3px;
+      }
+      .benchmark-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 25px 0 15px 0;
+        color: #2c3e50;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 8px;
+      }
+      .top-models {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 30px;
+      }
+      .top-model-card {
+        flex: 1;
+        min-width: 200px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      }
+      .top-model-rank {
+        font-size: 20px;
+        font-weight: bold;
+        color: #ff6b6b;
+        margin-bottom: 5px;
+      }
+      .top-model-name {
+        font-weight: 600;
+        margin-bottom: 5px;
+      }
+      .top-model-score {
+        color: #666;
+      }
+      .instructions {
+        background-color: #e8f4fc;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      @media (max-width: 768px) {
+        .chart-container {
+          height: 400px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Model Benchmark Results</h1>
+
+      <div class="instructions">
+        <p
+          >This visualization compares model performance across different benchmarks. Scores are
+          normalized to a 0-100 scale for fair comparison. Hover over data points for detailed
+          information.</p
+        >
+      </div>
+
+      <div class="chart-container">
+        <canvas id="benchmarkChart"></canvas>
+      </div>
+
+      <div
+        id="legend-container"
+        class="legend"
+      ></div>
+
+      <div class="benchmark-title">Aider Polyglot Coding Leaderboard - Top Models</div>
+      <div
+        id="aider-top-models"
+        class="top-models"
+      ></div>
+
+      <div class="benchmark-title">KCORES LLM Arena - Top Models</div>
+      <div
+        id="kcores-top-models"
+        class="top-models"
+      ></div>
+    </div>
+
+    <script src="results.js"></script>
+    <script>
+      // Wait for the results data to be loaded
+      document.addEventListener("DOMContentLoaded", function () {
+        // Define color palette for models
+        const modelColors = {
+          "o3 (high)": "rgba(255, 99, 132, 0.8)", // Pink
+          "o4-mini (high)": "rgba(54, 162, 235, 0.8)", // Blue
+          "GPT-4.1": "rgba(255, 206, 86, 0.8)", // Yellow
+          "Claude 3.5 Sonnet": "rgba(75, 192, 192, 0.8)", // Teal
+          "Claude 3.7 Sonnet (Thinking)": "rgba(153, 102, 255, 0.8)", // Purple
+          "Gemini 2.5 Pro": "rgba(255, 159, 64, 0.8)", // Orange
+          "DeepSeek R1": "rgba(199, 199, 199, 0.8)", // Gray
+          "DeepSeek V3 (0324)": "rgba(83, 102, 255, 0.8)", // Indigo
+          "Grok 3 Beta": "rgba(40, 167, 69, 0.8)", // Green
+        };
+
+        // Normalize scores to 0-100 scale
+        function normalizeScore(benchmark, score) {
+          if (benchmark === "aider_polyglot") {
+            return score; // Already normalized
+          } else if (benchmark === "kcores_llm_arena") {
+            // kcores_llm_arena: min=0, max=400 -> normalize to 0-100
+            return (score / 400) * 100;
+          }
+          return score;
+        }
+
+        // Prepare data for visualization
+        const benchmarks = [
+          {id: "aider_polyglot", name: "Aider Polyglot Coding Leaderboard"},
+          {id: "kcores_llm_arena", name: "KCORES LLM Arena"},
+        ];
+
+        // Get all models that have at least one benchmark result
+        const allModels = Object.keys(results).filter(model => {
+          return benchmarks.some(benchmark => results[model][benchmark.id]);
+        });
+
+        // Prepare dataset for Chart.js
+        const datasets = allModels.map(model => {
+          const data = benchmarks.map(benchmark => {
+            const benchmarkData = results[model][benchmark.id];
+            if (!benchmarkData) return null;
+
+            if (benchmark.id === "aider_polyglot") {
+              return normalizeScore(benchmark.id, benchmarkData.percent_correct);
+            } else if (benchmark.id === "kcores_llm_arena") {
+              return normalizeScore(benchmark.id, benchmarkData.normalized_score);
+            }
+            return null;
+          });
+
+          return {
+            label: model,
+            data: data,
+            backgroundColor: modelColors[model] || "rgba(0, 0, 0, 0.1)",
+            borderColor: modelColors[model]
+              ? modelColors[model].replace("0.8", "1")
+              : "rgba(0, 0, 0, 1)",
+            borderWidth: 1,
+            pointRadius: 6,
+            pointHoverRadius: 8,
+          };
+        });
+
+        // Create the chart
+        const ctx = document.getElementById("benchmarkChart").getContext("2d");
+        const chart = new Chart(ctx, {
+          type: "radar",
+          data: {
+            labels: benchmarks.map(b => b.name),
+            datasets: datasets,
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              r: {
+                angleLines: {
+                  display: true,
+                },
+                suggestedMin: 0,
+                suggestedMax: 100,
+                ticks: {
+                  stepSize: 20,
+                  callback: function (value) {
+                    return value + "%";
+                  },
+                },
+              },
+            },
+            plugins: {
+              legend: {
+                display: false,
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    const dataset = context.dataset;
+                    const label = dataset.label || "";
+                    const value = context.raw;
+                    return `${label}: ${value?.toFixed(1)}%`;
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        // Create custom legend
+        const legendContainer = document.getElementById("legend-container");
+        allModels.forEach(model => {
+          const legendItem = document.createElement("div");
+          legendItem.className = "legend-item";
+
+          const colorBox = document.createElement("div");
+          colorBox.className = "legend-color";
+          colorBox.style.backgroundColor = modelColors[model] || "rgba(0, 0, 0, 0.1)";
+
+          const label = document.createElement("span");
+          label.textContent = model;
+
+          legendItem.appendChild(colorBox);
+          legendItem.appendChild(label);
+          legendContainer.appendChild(legendItem);
+        });
+
+        // Find top 3 models for each benchmark
+        function getTopModels(benchmarkId, count = 3) {
+          return allModels
+            .filter(model => results[model][benchmarkId])
+            .map(model => {
+              let score;
+              if (benchmarkId === "aider_polyglot") {
+                score = results[model][benchmarkId].percent_correct;
+              } else if (benchmarkId === "kcores_llm_arena") {
+                score = results[model][benchmarkId].normalized_score;
+              }
+              return {model, score};
+            })
+            .sort((a, b) => b.score - a.score)
+            .slice(0, count);
+        }
+
+        // Display top models for each benchmark
+        const aiderTopModels = getTopModels("aider_polyglot");
+        const kcoresTopModels = getTopModels("kcores_llm_arena");
+
+        const aiderContainer = document.getElementById("aider-top-models");
+        aiderTopModels.forEach((item, index) => {
+          const card = document.createElement("div");
+          card.className = "top-model-card";
+
+          const rank = document.createElement("div");
+          rank.className = "top-model-rank";
+          rank.textContent = `#${index + 1}`;
+
+          const name = document.createElement("div");
+          name.className = "top-model-name";
+          name.textContent = item.model;
+
+          const score = document.createElement("div");
+          score.className = "top-model-score";
+          score.textContent = `Score: ${item.score.toFixed(1)}%`;
+
+          card.appendChild(rank);
+          card.appendChild(name);
+          card.appendChild(score);
+          aiderContainer.appendChild(card);
+        });
+
+        const kcoresContainer = document.getElementById("kcores-top-models");
+        kcoresTopModels.forEach((item, index) => {
+          const card = document.createElement("div");
+          card.className = "top-model-card";
+
+          const rank = document.createElement("div");
+          rank.className = "top-model-rank";
+          rank.textContent = `#${index + 1}`;
+
+          const name = document.createElement("div");
+          name.className = "top-model-name";
+          name.textContent = item.model;
+
+          const score = document.createElement("div");
+          score.className = "top-model-score";
+          score.textContent = `Score: ${item.score.toFixed(1)}%`;
+
+          card.appendChild(rank);
+          card.appendChild(name);
+          card.appendChild(score);
+          kcoresContainer.appendChild(card);
+        });
+      });
+    </script>
+  </body>
+</html>
