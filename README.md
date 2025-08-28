@@ -78,6 +78,16 @@ GPT OSS 120B (via Cerebras) generated a visualization with clear labels on the b
 
 Source code: [gpt-oss-120b-cerebras-1.html](output/gpt-oss-120b-cerebras-1.html)
 
+### Grok Grok Code Fast 1
+
+> Human rating: 8.25/10
+
+Grok Grok Code Fast 1 generated two completely separate bar charts, one for Aider and one for KCORES, which are visually pleasing.
+
+![grok-code-fast-1](output/grok-code-fast-1.png)
+
+Source code: [grok-code-fast-1.html](output/grok-code-fast-1.html)
+
 ### o3
 
 > Human rating: 8/10

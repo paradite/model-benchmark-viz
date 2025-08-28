@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Model Benchmark Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="results.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .chart-container {
+        display: flex;
+        justify-content: space-around;
+        align-items: flex-start;
+      }
+      .chart-section {
+        width: 45%;
+      }
+      canvas {
+        max-width: 100%;
+        height: 400px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <div class="chart-container">
+      <div class="chart-section">
+        <h2>Aider polyglot coding leaderboard</h2>
+        <canvas id="aiderChart"></canvas>
+      </div>
+      <div class="chart-section">
+        <h2>KCORES LLM Arena</h2>
+        <canvas id="kcoresChart"></canvas>
+      </div>
+    </div>
+    <script>
+      // Assign consistent colors to models
+      const colorList = [
+        "#FF6384",
+        "#36A2EB",
+        "#FFCE56",
+        "#4BC0C0",
+        "#9966FF",
+        "#FF9F40",
+        "#FF6384",
+        "#C9CBCF",
+        "#4BC0C0",
+        "#FF6384",
+      ];
+      const modelColors = {};
+      let colorIndex = 0;
+      for (let model of models) {
+        modelColors[model] = colorList[colorIndex % colorList.length];
+        colorIndex++;
+      }
+
+      // Process Aider polyglot data
+      let aiderData = {};
+      for (let model in results) {
+        if (results[model].aider_polyglot) {
+          aiderData[model] = results[model].aider_polyglot.percent_correct;
+        }
+      }
+      let sortedAider = Object.entries(aiderData).sort((a, b) => b[1] - a[1]);
+      let aiderLabels = sortedAider.map(([m, s]) => m);
+      let aiderScores = sortedAider.map(([m, s]) => s);
+      let aiderColors = aiderLabels.map(m => modelColors[m]);
+
+      // Process KCORES data with normalization
+      let kcoresData = {};
+      for (let model in results) {
+        if (results[model].kcores_llm_arena) {
+          kcoresData[model] = (results[model].kcores_llm_arena.normalized_score / 400) * 100;
+        }
+      }
+      let sortedKcores = Object.entries(kcoresData).sort((a, b) => b[1] - a[1]);
+      let kcoresLabels = sortedKcores.map(([m, s]) => m);
+      let kcoresScores = sortedKcores.map(([m, s]) => s);
+      let kcoresColors = kcoresLabels.map(m => modelColors[m]);
+
+      // Aider Chart
+      new Chart(document.getElementById("aiderChart"), {
+        type: "bar",
+        data: {
+          labels: aiderLabels,
+          datasets: [
+            {
+              label: "Score",
+              data: aiderScores,
+              backgroundColor: aiderColors,
+              borderColor: aiderColors,
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {
+                display: true,
+                text: "Score (0-100)",
+              },
+            },
+            x: {
+              title: {
+                display: true,
+                text: "Models (Sorted by Score Descending)",
+              },
+            },
+          },
+          plugins: {
+            legend: {
+              display: false,
+            },
+          },
+        },
+      });
+
+      // KCORES Chart
+      new Chart(document.getElementById("kcoresChart"), {
+        type: "bar",
+        data: {
+          labels: kcoresLabels,
+          datasets: [
+            {
+              label: "Score",
+              data: kcoresScores,
+              backgroundColor: kcoresColors,
+              borderColor: kcoresColors,
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {
+                display: true,
+                text: "Score (0-100)",
+              },
+            },
+            x: {
+              title: {
+                display: true,
+                text: "Models (Sorted by Score Descending)",
+              },
+            },
+          },
+          plugins: {
+            legend: {
+              display: false,
+            },
+          },
+        },
+      });
+    </script>
+  </body>
+</html>
