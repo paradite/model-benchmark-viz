@@ -78,6 +78,16 @@ GPT OSS 120B (via Cerebras) generated a visualization with clear labels on the b
 
 Source code: [gpt-oss-120b-cerebras-1.html](output/gpt-oss-120b-cerebras-1.html)
 
+### GPT-5 (Medium)
+
+> Human rating: 8.5/10
+
+GPT-5 (Medium) generated a visualization with clear labels on the bar chart.
+
+![gpt-5-medium](output/gpt-5.png)
+
+Source code: [gpt-5-medium.html](output/gpt-5.html)
+
 ### Grok Grok Code Fast 1
 
 > Human rating: 8.25/10
