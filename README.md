@@ -50,6 +50,20 @@ Although the bars are colored by model instead of by benchmark, different benchm
 
 Source code: [kimi-k2-0711-preview.html](output/kimi-k2-0711-preview.html)
 
+### GPT-5 (High)
+
+> Human rating: 9.25/10
+
+GPT-5 (High) generated a visually pleasing visualization with clear labels on the bar chart and legend.
+
+The graph was also interactive. Upon hover of the bar, it actually highlights the current model across two different benchmarks for easy comparison.
+
+![gpt-5-high-1](output/gpt-5-high-1.png)
+
+![gpt-5-high-2](output/gpt-5-high-2.png)
+
+Source code: [gpt-5-high.html](output/gpt-5-high.html)
+
 ### GPT-4.1
 
 > Human rating: 8.75/10

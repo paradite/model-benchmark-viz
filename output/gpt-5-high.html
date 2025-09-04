@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Model Benchmark Results</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+    <!-- Data: load from the same directory -->
+    <script src="results.js"></script>
+    <!-- D3 from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #12182c;
+        --text: #e8ecf3;
+        --muted: #a9b4c2;
+        --grid: #25304b;
+        --accent: #5ba8ff;
+        --highlight-stroke: #ffffff;
+        --rank-glow: rgba(255, 255, 255, 0.85);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial,
+          "Apple Color Emoji", "Segoe UI Emoji";
+      }
+      h1 {
+        margin: 18px 0 4px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        text-align: center;
+      }
+      .sub {
+        margin: 0 auto 14px;
+        max-width: 1100px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      #app {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 12px 14px 30px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid #1b2440;
+        border-radius: 10px;
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02) inset, 0 8px 24px rgba(0, 0, 0, 0.35);
+        padding: 12px;
+      }
+      #legend {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 8px 14px;
+        margin-bottom: 12px;
+        align-items: center;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid #1b2440;
+        border-radius: 8px;
+        padding: 8px 10px;
+        cursor: pointer;
+        transition: transform 0.1s ease, background 0.2s ease, border-color 0.2s ease;
+        user-select: none;
+      }
+      .legend-item:hover {
+        transform: translateY(-1px);
+        background: rgba(255, 255, 255, 0.04);
+        border-color: #2a3761;
+      }
+      .legend-item.active {
+        outline: 1px solid var(--accent);
+      }
+      .legend-swatch {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        flex: 0 0 auto;
+      }
+      .legend-label {
+        font-size: 13px;
+        line-height: 1.2;
+        color: var(--text);
+      }
+      .legend-label small {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      #chart.panel {
+        padding: 8px;
+      }
+      .chart-wrap {
+        position: relative;
+        width: 100%;
+      }
+      svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .axis text {
+        fill: var(--text);
+        font-size: 12px;
+      }
+      .axis path,
+      .axis line {
+        stroke: var(--grid);
+        shape-rendering: crispEdges;
+      }
+      .grid line {
+        stroke: var(--grid);
+        opacity: 0.7;
+      }
+      .grid path {
+        stroke-width: 0;
+      }
+      .y-label {
+        fill: var(--muted);
+        font-size: 12px;
+      }
+
+      .bar {
+        shape-rendering: geometricPrecision;
+      }
+      .bar.dim {
+        opacity: 0.15;
+      }
+      .bar.top {
+        stroke: var(--highlight-stroke);
+        stroke-width: 1.4;
+      }
+
+      .rank-label {
+        font-size: 18px;
+        text-anchor: middle;
+        pointer-events: none;
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9));
+      }
+
+      .tooltip {
+        position: absolute;
+        z-index: 20;
+        pointer-events: none;
+        background: rgba(7, 10, 22, 0.96);
+        color: var(--text);
+        border: 1px solid #334067;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 13px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        transform: translate(-50%, -115%);
+        min-width: 220px;
+        opacity: 0;
+        transition: opacity 0.08s linear;
+        backdrop-filter: saturate(1.1) blur(5px);
+      }
+      .tooltip .model {
+        font-weight: 700;
+      }
+      .tooltip .bench {
+        color: var(--muted);
+      }
+      .tooltip .metric {
+        margin-top: 6px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 4px 12px;
+        align-items: center;
+      }
+      .tooltip hr {
+        border: 0;
+        border-top: 1px solid #243054;
+        margin: 8px 0;
+      }
+      .tooltip .small {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .notes {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 10px;
+        text-align: center;
+      }
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 8px 0 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid #1b2440;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .badge .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--accent);
+        border: 1px solid #5a6f9c;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <h1>Model Benchmark Results</h1>
+      <p class="sub"
+        >Comparing models across two benchmarks with primary metrics normalized to a 0–100 scale.</p
+      >
+
+      <div class="controls">
+        <span class="badge"
+          ><span class="dot"></span> Each model has its own color across benchmarks</span
+        >
+        <span class="badge">🥇🥈🥉 Top 3 per benchmark are labeled above bars</span>
+        <span class="badge">Hover bars or legend to highlight a model</span>
+      </div>
+
+      <div
+        id="legend"
+        class="panel"
+      ></div>
+      <div
+        id="chart"
+        class="panel"
+      >
+        <div class="chart-wrap">
+          <svg
+            id="viz"
+            role="img"
+            aria-label="Grouped bar chart comparing models across benchmarks"
+          ></svg>
+          <div
+            id="tooltip"
+            class="tooltip"
+            aria-hidden="true"
+          ></div>
+        </div>
+      </div>
+      <p class="notes">
+        Normalization: Aider polyglot coding leaderboard uses percent_correct (already 0–100).
+        KCORES LLM Arena uses normalized_score with range 0–400, converted here to 0–100 by dividing
+        by 4.
+      </p>
+    </div>
+
+    <script>
+      (function () {
+        // Ensure results are available
+        if (typeof results !== "object") {
+          console.error("results.js did not load correctly.");
+          return;
+        }
+
+        const modelNames = Object.keys(results);
+        const benchKeys = ["aider_polyglot", "kcores_llm_arena"];
+        const benchMeta = {
+          aider_polyglot: {
+            label: "Aider polyglot coding leaderboard",
+            primaryKey: "percent_correct",
+            normalize: v => v,
+            unitShort: "%",
+            rawFormat: v => `${v.toFixed(1)}%`,
+          },
+          kcores_llm_arena: {
+            label: "KCORES LLM Arena",
+            primaryKey: "normalized_score",
+            normalize: v => v / 4, // 0-400 -> 0-100
+            unitShort: "/400",
+            rawFormat: v => `${v.toFixed(1)} / 400`,
+          },
+        };
+
+        // Prepare color scale for models
+        const colorRange = d3.schemeTableau10.concat([
+          "#b95eff",
+          "#ffd166",
+          "#06d6a0",
+          "#ef476f",
+          "#118ab2",
+          "#073b4c",
+        ]); // plenty of distinct colors if needed
+        const color = d3
+          .scaleOrdinal()
+          .domain(modelNames)
+          .range(colorRange.slice(0, modelNames.length));
+
+        function getRawValue(model, benchKey) {
+          const entry = results[model][benchKey];
+          if (!entry) return null;
+          const key = benchMeta[benchKey].primaryKey;
+          const v = entry[key];
+          return typeof v === "number" ? v : null;
+        }
+        function getNormalized(model, benchKey) {
+          const v = getRawValue(model, benchKey);
+          if (v == null) return null;
+          return benchMeta[benchKey].normalize(v);
+        }
+
+        // Build data structure for rendering
+        const dataByBench = benchKeys.map(benchKey => ({
+          benchKey,
+          benchLabel: benchMeta[benchKey].label,
+          values: modelNames.map(m => {
+            const raw = getRawValue(m, benchKey);
+            const normalized = getNormalized(m, benchKey);
+            return {
+              model: m,
+              benchKey,
+              benchLabel: benchMeta[benchKey].label,
+              raw,
+              normalized,
+            };
+          }),
+        }));
+
+        // Compute top-3 per benchmark
+        const topRankIndexMap = {}; // benchKey|model -> rankIndex (0,1,2)
+        const rankEmojis = ["🥇", "🥈", "🥉"];
+        dataByBench.forEach(group => {
+          const top3 = group.values
+            .filter(d => d.normalized != null)
+            .sort((a, b) => b.normalized - a.normalized)
+            .slice(0, 3);
+          top3.forEach((d, i) => {
+            topRankIndexMap[`${group.benchKey}|${d.model}`] = i;
+          });
+        });
+
+        // Build legend
+        const legend = d3.select("#legend");
+        const legendItems = legend
+          .selectAll(".legend-item")
+          .data(modelNames)
+          .join("div")
+          .attr("class", "legend-item")
+          .on("mouseenter", (e, m) => highlightModel(m))
+          .on("mouseleave", clearHighlight)
+          .on("click", (e, m) => {
+            // Toggle active state to lock highlight
+            const node = e.currentTarget;
+            const isActive = node.classList.contains("active");
+            legend.selectAll(".legend-item").classed("active", false);
+            if (!isActive) {
+              node.classList.add("active");
+              highlightModel(m);
+            } else {
+              clearHighlight();
+            }
+          });
+
+        legendItems
+          .append("span")
+          .attr("class", "legend-swatch")
+          .style("background-color", d => color(d));
+
+        legendItems
+          .append("div")
+          .attr("class", "legend-label")
+          .html(d => d);
+
+        // Tooltip
+        const tooltip = d3.select("#tooltip");
+        function showTooltip(html, x, y) {
+          tooltip
+            .html(html)
+            .style("left", x + "px")
+            .style("top", y + "px")
+            .style("opacity", 1)
+            .attr("aria-hidden", "false");
+        }
+        function hideTooltip() {
+          tooltip.style("opacity", 0).attr("aria-hidden", "true");
+        }
+
+        // Render chart
+        const svg = d3.select("#viz");
+        let resizeTimer = null;
+        window.addEventListener("resize", () => {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(draw, 50);
+        });
+        draw();
+
+        function draw() {
+          svg.selectAll("*").remove();
+
+          const container = svg.node().parentNode.getBoundingClientRect();
+          const width = Math.max(700, container.width);
+          const height = 520;
+          svg.attr("viewBox", `0 0 ${width} ${height}`);
+
+          const margin = {top: 70, right: 20, bottom: 70, left: 68};
+          const innerWidth = width - margin.left - margin.right;
+          const innerHeight = height - margin.top - margin.bottom;
+
+          const benchLabels = benchKeys.map(k => benchMeta[k].label);
+          const x0 = d3.scaleBand().domain(benchLabels).range([0, innerWidth]).padding(0.25);
+
+          const x1 = d3.scaleBand().domain(modelNames).range([0, x0.bandwidth()]).padding(0.06);
+
+          const y = d3.scaleLinear().domain([0, 100]).nice().range([innerHeight, 0]);
+
+          const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+          // Gridlines
+          g.append("g")
+            .attr("class", "grid")
+            .call(d3.axisLeft(y).ticks(5).tickSize(-innerWidth).tickFormat(""))
+            .selectAll("text")
+            .remove();
+
+          // Axes
+          g.append("g")
+            .attr("class", "axis x-axis")
+            .attr("transform", `translate(0,${innerHeight})`)
+            .call(d3.axisBottom(x0));
+
+          g.append("g").attr("class", "axis y-axis").call(d3.axisLeft(y).ticks(5));
+
+          // Y axis label
+          g.append("text")
+            .attr("class", "y-label")
+            .attr("x", -innerHeight / 2)
+            .attr("y", -50)
+            .attr("transform", "rotate(-90)")
+            .attr("text-anchor", "middle")
+            .text("Normalized score (0–100)");
+
+          // Benchmark groups
+          const benchGroup = g
+            .selectAll(".bench-group")
+            .data(dataByBench, d => d.benchKey)
+            .join("g")
+            .attr("class", "bench-group")
+            .attr("transform", d => `translate(${x0(d.benchLabel)},0)`);
+
+          // Bars
+          const bars = benchGroup
+            .selectAll("rect.bar")
+            .data(
+              d => d.values,
+              d => d.model,
+            )
+            .join("rect")
+            .attr("class", d => {
+              const key = `${d.benchKey}|${d.model}`;
+              const isTop = topRankIndexMap[key] !== undefined;
+              return "bar" + (isTop ? " top" : "");
+            })
+            .attr("x", d => x1(d.model))
+            .attr("y", d => (d.normalized != null ? y(d.normalized) : y(0)))
+            .attr("width", x1.bandwidth())
+            .attr("height", d => (d.normalized != null ? innerHeight - y(d.normalized) : 0))
+            .attr("fill", d => color(d.model))
+            .attr("opacity", d => (d.normalized != null ? 0.9 : 0.15))
+            .on("mousemove", (event, d) => {
+              const bench = benchMeta[d.benchKey];
+              const norm = d.normalized != null ? d.normalized.toFixed(1) : "N/A";
+              const raw = d.raw != null ? bench.rawFormat(d.raw) : "N/A";
+              const html = `
+              <div class="model">${d.model}</div>
+              <div class="bench">${bench.label}</div>
+              <hr />
+              <div class="metric"><div>Normalized score</div><div><b>${norm}</b> / 100</div></div>
+              <div class="metric"><div>Primary metric</div><div>${raw}</div></div>
+            `;
+              const {left, top} = svg.node().getBoundingClientRect();
+              showTooltip(html, event.clientX - left, event.clientY - top);
+            })
+            .on("mouseenter", (event, d) => {
+              highlightModel(d.model);
+            })
+            .on("mouseleave", () => {
+              hideTooltip();
+              // Only clear highlight if no legend item is locked
+              if (d3.select("#legend").selectAll(".legend-item.active").size() === 0) {
+                clearHighlight();
+              }
+            });
+
+          // Rank labels (🥇🥈🥉) above top-3 bars
+          benchGroup.each(function (groupData) {
+            const group = d3.select(this);
+            const top3 = groupData.values.filter(
+              v => topRankIndexMap[`${groupData.benchKey}|${v.model}`] !== undefined,
+            );
+
+            group
+              .selectAll("text.rank-label")
+              .data(top3)
+              .join("text")
+              .attr("class", "rank-label")
+              .attr("x", d => x1(d.model) + x1.bandwidth() / 2)
+              .attr("y", d => (d.normalized != null ? y(d.normalized) : y(0)) - 8)
+              .text(d => {
+                const idx = topRankIndexMap[`${groupData.benchKey}|${d.model}`];
+                return rankEmojis[idx];
+              });
+          });
+
+          // Title overlay for clarity (optional, kept subtle)
+          svg
+            .append("text")
+            .attr("x", margin.left)
+            .attr("y", 24)
+            .attr("fill", "var(--muted)")
+            .attr("font-size", 12)
+            .text("Grouped by benchmark; each bar is a model (color-coded).");
+
+          // Bring tooltip to front
+          d3.select(".chart-wrap").raise();
+        }
+
+        function highlightModel(model) {
+          d3.selectAll("rect.bar").classed("dim", d => d.model !== model);
+          d3.selectAll(".legend-item").classed("active", d => d === model);
+        }
+        function clearHighlight() {
+          d3.selectAll("rect.bar").classed("dim", false);
+          d3.selectAll(".legend-item").classed("active", false);
+        }
+      })();
+    </script>
+  </body>
+</html>
