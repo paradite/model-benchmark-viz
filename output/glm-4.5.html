@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Model Benchmark Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="results.js"></script>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f8f9fa;
+        color: #333;
+      }
+      h1 {
+        text-align: center;
+        color: #2c3e50;
+        margin-bottom: 30px;
+      }
+      .chart-container {
+        background-color: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+        margin-top: 20px;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        padding: 5px 10px;
+        border-radius: 5px;
+        background-color: #f1f3f5;
+      }
+      .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        margin-right: 8px;
+      }
+      .benchmark-info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+      .benchmark-card {
+        flex: 1;
+        background-color: #f1f3f5;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 0 10px;
+      }
+      .benchmark-card h3 {
+        margin-top: 0;
+        color: #2c3e50;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 8px;
+      }
+      .top-models {
+        margin-top: 10px;
+      }
+      .top-model {
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
+      }
+      .rank {
+        font-weight: bold;
+        margin-right: 10px;
+        width: 25px;
+        height: 25px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        color: white;
+      }
+      .rank-1 {
+        background-color: #f39c12;
+      }
+      .rank-2 {
+        background-color: #95a5a6;
+      }
+      .rank-3 {
+        background-color: #cd7f32;
+      }
+      .model-name {
+        font-weight: 500;
+      }
+      .score {
+        margin-left: auto;
+        font-weight: bold;
+        color: #2c3e50;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+
+    <div class="benchmark-info">
+      <div class="benchmark-card">
+        <h3>Aider polyglot coding leaderboard</h3>
+        <p>Measures coding ability through code editing tasks</p>
+        <div
+          class="top-models"
+          id="aider-top-models"
+        ></div>
+      </div>
+      <div class="benchmark-card">
+        <h3>KCORES LLM Arena</h3>
+        <p>Evaluates model performance through head-to-head battles</p>
+        <div
+          class="top-models"
+          id="kcores-top-models"
+        ></div>
+      </div>
+    </div>
+
+    <div class="chart-container">
+      <canvas id="benchmarkChart"></canvas>
+    </div>
+
+    <div
+      class="legend"
+      id="model-legend"
+    ></div>
+
+    <script>
+      // Normalize KCORES scores to 0-100 scale
+      function normalizeKcoresScore(score) {
+        return (score / 400) * 100;
+      }
+
+      // Get top 3 models for a benchmark
+      function getTopModels(benchmarkKey, scoreKey, normalizeFn = null) {
+        const modelScores = [];
+
+        for (const model in results) {
+          if (results[model][benchmarkKey]) {
+            let score = results[model][benchmarkKey][scoreKey];
+            if (normalizeFn) score = normalizeFn(score);
+            modelScores.push({model, score});
+          }
+        }
+
+        return modelScores.sort((a, b) => b.score - a.score).slice(0, 3);
+      }
+
+      // Generate distinct colors for models
+      function generateColors(count) {
+        const colors = [
+          "#3498db",
+          "#e74c3c",
+          "#2ecc71",
+          "#f39c12",
+          "#9b59b6",
+          "#1abc9c",
+          "#34495e",
+          "#d35400",
+          "#c0392b",
+          "#8e44ad",
+        ];
+        return colors.slice(0, count);
+      }
+
+      // Prepare data for chart
+      function prepareChartData() {
+        const models = Object.keys(results);
+        const modelColors = generateColors(models.length);
+
+        // Get top models for each benchmark
+        const aiderTop = getTopModels("aider_polyglot", "percent_correct");
+        const kcoresTop = getTopModels(
+          "kcores_llm_arena",
+          "normalized_score",
+          normalizeKcoresScore,
+        );
+
+        // Create datasets for each benchmark
+        const datasets = [
+          {
+            label: "Aider polyglot coding leaderboard",
+            data: [],
+            backgroundColor: [],
+            borderColor: [],
+            borderWidth: 1,
+          },
+          {
+            label: "KCORES LLM Arena",
+            data: [],
+            backgroundColor: [],
+            borderColor: [],
+            borderWidth: 1,
+          },
+        ];
+
+        // Prepare data for each model
+        const modelData = [];
+        models.forEach((model, index) => {
+          const color = modelColors[index];
+
+          // Aider data
+          const aiderScore = results[model]["aider_polyglot"]
+            ? results[model]["aider_polyglot"]["percent_correct"]
+            : null;
+
+          // KCORES data
+          const kcoresScore = results[model]["kcores_llm_arena"]
+            ? normalizeKcoresScore(results[model]["kcores_llm_arena"]["normalized_score"])
+            : null;
+
+          datasets[0].data.push(aiderScore);
+          datasets[0].backgroundColor.push(color);
+          datasets[0].borderColor.push(color);
+
+          datasets[1].data.push(kcoresScore);
+          datasets[1].backgroundColor.push(color);
+          datasets[1].borderColor.push(color);
+
+          modelData.push({model, color});
+        });
+
+        return {datasets, modelData, aiderTop, kcoresTop};
+      }
+
+      // Create the chart
+      function createChart() {
+        const {datasets, modelData, aiderTop, kcoresTop} = prepareChartData();
+        const ctx = document.getElementById("benchmarkChart").getContext("2d");
+
+        new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: Object.keys(results),
+            datasets: datasets,
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+                title: {
+                  display: true,
+                  text: "Normalized Score (0-100)",
+                },
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: "Models",
+                },
+              },
+            },
+            plugins: {
+              legend: {
+                display: true,
+                position: "top",
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}`;
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        // Create model legend
+        const legendContainer = document.getElementById("model-legend");
+        modelData.forEach(({model, color}) => {
+          const item = document.createElement("div");
+          item.className = "legend-item";
+          item.innerHTML = `
+                    <div class="legend-color" style="background-color: ${color}"></div>
+                    <span>${model}</span>
+                `;
+          legendContainer.appendChild(item);
+        });
+
+        // Display top models for each benchmark
+        displayTopModels("aider-top-models", aiderTop, "percent_correct");
+        displayTopModels("kcores-top-models", kcoresTop, "normalized_score", true);
+      }
+
+      // Display top models in benchmark cards
+      function displayTopModels(containerId, topModels, scoreKey, isKcores = false) {
+        const container = document.getElementById(containerId);
+
+        topModels.forEach((model, index) => {
+          const rank = index + 1;
+          const score = isKcores
+            ? normalizeKcoresScore(model.score).toFixed(1)
+            : model.score.toFixed(1);
+
+          const item = document.createElement("div");
+          item.className = "top-model";
+          item.innerHTML = `
+                    <div class="rank rank-${rank}">${rank}</div>
+                    <div class="model-name">${model.model}</div>
+                    <div class="score">${score}</div>
+                `;
+          container.appendChild(item);
+        });
+      }
+
+      // Initialize the visualization
+      createChart();
+    </script>
+  </body>
+</html>
