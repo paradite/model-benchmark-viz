@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Model Benchmark Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="results.js"></script>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+          sans-serif;
+        margin: 0;
+        padding: 2rem;
+        background: #f7f7f7;
+        color: #222;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+      #chart-container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      }
+      .legend-note {
+        text-align: center;
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Model Benchmark Results</h1>
+    <div id="chart-container">
+      <canvas id="benchmarkChart"></canvas>
+      <div class="legend-note">Top 3 models per benchmark are marked with 🏆</div>
+    </div>
+
+    <script>
+      // Helper: consistent color palette
+      const modelColors = {
+        "o3 (high)": "#e41a1c",
+        "o4-mini (high)": "#377eb8",
+        "GPT-4.1": "#4daf4a",
+        "Claude 3.5 Sonnet": "#984ea3",
+        "Claude 3.7 Sonnet (Thinking)": "#ff7f00",
+        "Gemini 2.5 Pro": "#ffff33",
+        "DeepSeek R1": "#a65628",
+        "DeepSeek V3 (0324)": "#f781bf",
+        "Grok 3 Beta": "#999999",
+      };
+
+      // Normalize kcores_llm_arena score (0-400 -> 0-100)
+      function normalizeKcores(score) {
+        return (score / 400) * 100;
+      }
+
+      // Build datasets for Chart.js
+      const aiderData = [];
+      const kcoresData = [];
+      const labels = [];
+
+      Object.entries(results).forEach(([model, data]) => {
+        labels.push(model);
+        // Aider polyglot
+        aiderData.push(data.aider_polyglot ? data.aider_polyglot.percent_correct : null);
+        // KCORES LLM Arena
+        kcoresData.push(
+          data.kcores_llm_arena ? normalizeKcores(data.kcores_llm_arena.normalized_score) : null,
+        );
+      });
+
+      // Mark top 3 for each benchmark
+      function top3Indices(arr) {
+        return arr
+          .map((val, idx) => ({val, idx}))
+          .filter(item => item.val !== null)
+          .sort((a, b) => b.val - a.val)
+          .slice(0, 3)
+          .map(item => item.idx);
+      }
+
+      const aiderTop3 = top3Indices(aiderData);
+      const kcoresTop3 = top3Indices(kcoresData);
+
+      // Build datasets with colors and top-3 labels
+      const datasets = [
+        {
+          label: "Aider polyglot coding leaderboard",
+          data: aiderData.map((val, idx) => {
+            const suffix = aiderTop3.includes(idx) ? " 🏆" : "";
+            return val === null ? null : {y: val, label: labels[idx] + suffix};
+          }),
+          backgroundColor: labels.map(m => modelColors[m] || "#ccc"),
+          borderColor: labels.map(m => modelColors[m] || "#ccc"),
+          borderWidth: 1,
+        },
+        {
+          label: "KCORES LLM Arena",
+          data: kcoresData.map((val, idx) => {
+            const suffix = kcoresTop3.includes(idx) ? " 🏆" : "";
+            return val === null ? null : {y: val, label: labels[idx] + suffix};
+          }),
+          backgroundColor: labels.map(m => modelColors[m] || "#ccc"),
+          borderColor: labels.map(m => modelColors[m] || "#ccc"),
+          borderWidth: 1,
+        },
+      ];
+
+      // Render chart
+      const ctx = document.getElementById("benchmarkChart").getContext("2d");
+      new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: datasets,
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: false,
+            },
+            legend: {
+              display: true,
+              position: "bottom",
+            },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  const label = context.raw.label || context.dataset.label;
+                  return label + ": " + context.parsed.y.toFixed(1);
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: "Model",
+              },
+            },
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {
+                display: true,
+                text: "Normalized Score (0-100)",
+              },
+            },
+          },
+        },
+      });
+    </script>
+  </body>
+</html>
